@@ -1,0 +1,469 @@
+import React, { createContext, useContext, useEffect, useLayoutEffect, useState, useCallback, useRef } from 'react';
+import { apiHealth, apiJson } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
+import { findDuplicate } from '@/services/DuplicateService';
+import { calculatePriorityScore, getPriorityLabel, classifyIssue } from '@/services/CivicEngine';
+import { analyzePatterns, generateEscalation } from '@/services/PredictiveService';
+import { isWithinRadius } from '@/lib/geoUtils';
+
+const AppContext = createContext();
+
+const MOCK_ISSUES = [
+  {
+    id: 1,
+    title: 'Pothole on Main St',
+    titles: {
+      hi: 'मेन स्ट्रीट पर गड्ढा',
+      mr: 'मेन स्ट्रीटवर खड्डा',
+      bn: 'মেইন স্ট্রিটে গর্ত',
+      ta: 'மெயின் ஸ்ட்ரீட்டில் குழி',
+      te: 'మెయిన్ స్ట్రీట్‌లో గుంత',
+      gu: 'મેઈન સ્ટ્રીટ પર ખાડો',
+      kn: 'ಮೇಯಿನ್ ಸ್ಟ್ರೀಟ್‌ನಲ್ಲಿ ಗುಂಡಿ',
+      pa: 'ਮੇਨ ਸਟਰੀਟ ਤੇ ਟੋਆ',
+      ur: 'مین سٹریٹ پر گڑھا',
+    },
+    description: 'A large pothole has formed on the main street causing damage to vehicles.',
+    descriptions: {
+      hi: 'मुख्य सड़क पर एक बड़ा गड्ढा बन गया है जिससे वाहनों को नुकसान हो रहा है।',
+      mr: 'मुख्य रस्त्यावर एक मोठा खड्डा तयार झाला आहे ज्यामुळे वाहनांना नुकसान होत आहे।',
+      bn: 'প্রধান রাস্তায় একটি বড় গর্ত তৈরি হয়েছে যা যানবাহনের ক্ষতি করছে।',
+      ta: 'முக்கிய சாலையில் ஒரு பெரிய குழி உருவாகியுள்ளது, வாகனங்களுக்கு சேதம் ஏற்படுகிறது.',
+      te: 'ప్రధాన రోడ్డులో పెద్ద గుంత ఏర్పడింది, వాహనాలకు నష్టం కలుగుతోంది.',
+      gu: 'મુખ્ય રસ્તા પર એક મોટો ખાડો પડ્યો છે જે વાહનોને નુકસાન કરી રહ્યો છે.',
+      kn: 'ಮುಖ್ಯ ರಸ್ತೆಯಲ್ಲಿ ದೊಡ್ಡ ಗುಂಡಿ ಬಿದ್ದಿದ್ದು ವಾಹನಗಳಿಗೆ ಹಾನಿ ಉಂಟಾಗುತ್ತಿದೆ.',
+      pa: 'ਮੁੱਖ ਸੜਕ ਤੇ ਇੱਕ ਵੱਡਾ ਟੋਆ ਬਣ ਗਿਆ ਹੈ ਜੋ ਵਾਹਨਾਂ ਨੂੰ ਨੁਕਸਾਨ ਪਹੁੰਚਾ ਰਿਹਾ ਹੈ।',
+      ur: 'مین سٹریٹ پر ఒక بڑا گڑھا بن گیا ہے ਜੋ گاڑیوں کو نقصان پہنچਾ رہا ہے۔',
+    },
+    category: 'Infrastructure',
+    location: '123 Main St',
+    progress: 'In Progress',
+    upvotes: 12,
+    downvotes: 2,
+    authorId: 100,
+    lat: 51.505,
+    lng: -0.09,
+    img: 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&q=80&w=800',
+  },
+  {
+    id: 2,
+    title: 'Broken Streetlight',
+    titles: {
+      hi: 'टूटी हुई सड़क की बत्ती',
+      mr: 'तुटलेला रस्त्यावरचा दिवा',
+      bn: 'ভাঙা রাস্তার বাতি',
+      ta: 'உடைந்த தெரு விளக்கு',
+      te: 'విరిగిన వీధి దీపం',
+      gu: 'તૂટેલી શેરી લાઇટ',
+      kn: 'ಮುರಿದ ಬೀದಿ ದೀಪ',
+      pa: 'ਟੁੱਟਿਆ ਸੜਕ ਦਾ ਦੀਵਾ',
+      ur: 'ٹوٹی ہوئی سڑک کی روشنی',
+    },
+    description:
+      'The streetlight at Oak Ave has been broken for weeks, creating a safety hazard at night.',
+    descriptions: {
+      hi: 'ओक एवेन्यू की सड़क बत्ती कई हफ्तों से टूटी है, जिससे रात में सुरक्षा का खतरा है।',
+      mr: 'ओक एवेन्यूवरचा दिवा अनेक आठवड्यांपासून बंद आहे, रात्री सुरक्षेचा धोका आहे।',
+      bn: 'ওক অ্যাভিনিউর রাস্তার বাতি কয়েক সপ্তাহ ধরে নষ্ট, রাতে নিরাপত্তার ঝুঁকি তৈরি হচ্ছে।',
+      ta: 'ஓக் அவென்யூவின் தெரு விளக்கு வாரங்களாக கேடாக உள்ளது, இரவில் பாதுகாப்பு அபாயம் உள்ளது.',
+      te: 'ఓక్ ఏవెన్యూ వద్ద వీధి దీపం వారాల తరబడి పాడైపోయింది, రాత్రి సమయంలో ప్రమాదం.',
+      gu: 'ઓક એવ.ની શેરી લાઇટ અઠવાડિયાઓથી બંધ છે, રાત્રે સુરક્ષા જોખમ ઊભું થઈ ગયું છે.',
+      kn: 'ಮುಖ್ಯ ರಸ್ತೆಯಲ್ಲಿ ದೊಡ್ಡ ಗುಂಡಿ ಬಿದ್ದಿದ್ದು ವಾಹನಗಳಿಗೆ ಹಾನಿ ಉಂಟಾಗುತ್ತಿದೆ.',
+      pa: 'ਓਕ ਐਵੇਨਿਊ ਦਾ ਦੀਵਾ ਹਫ਼ਤਿਆਂ ਤੋਂ ਟੁੱਟਿਆ ਹੈ, ਰਾਤ ਵੇਲੇ ਸੁਰੱਖਿਆ ਖ਼ਤਰਾ ਬਣ ਗਿਆ ਹੈ।',
+      ur: 'اوک ایونیو کی سڑک کی بتی ہفتوں سے خراب ہے, रात को حفاظتی خطرہ ہے۔',
+    },
+    category: 'Electricity',
+    location: '45 Oak Ave',
+    progress: 'Reported',
+    upvotes: 34,
+    downvotes: 5,
+    authorId: 101,
+    lat: 51.51,
+    lng: -0.1,
+    img: 'https://images.unsplash.com/photo-1542482324-4f05cd43cbeb?auto=format&fit=crop&q=80&w=800',
+    priorityScore: 65,
+    priorityLabel: 'High',
+  },
+  {
+    id: 3,
+    title: 'Major Water Leakage',
+    titles: { hi: 'पानी का भारी रिसाव', bn: 'বড় জল নিঃসরণ', te: 'భారీ నీటి లీకేజీ' },
+    description: 'There is a massive water leak near the hospital entrance. The road is flooded.',
+    descriptions: { hi: 'अस्पताल के प्रवेश द्वार के पास पानी का भारी रिसाव हो रहा है। सड़क पर पानी भरा है।' },
+    category: 'Water',
+    location: 'City Hospital South Gate',
+    progress: 'Reported',
+    upvotes: 45,
+    downvotes: 1,
+    authorId: 102,
+    lat: 51.508,
+    lng: -0.095,
+    img: 'https://images.unsplash.com/photo-1584281722572-870026685890?auto=format&fit=crop&q=80&w=800',
+    priorityScore: 92,
+    priorityLabel: 'Critical',
+    prediction: {
+      type: 'Predictive Alert',
+      message: 'High Risk: Unusual water leakage detected near critical infrastructure (Hospital). Potential main supply line failure.',
+      riskLevel: 'High'
+    }
+  },
+  {
+    id: 10,
+    title: 'Streetlight Repair Needed (Nearby)',
+    titles: { hi: 'स्ट्रीट लाइट मरम्मत (पास में)', te: 'వీధిలైట్ల మరమ్మత్తు (సమీపంలో)' },
+    description: 'The streetlights on the main road are flickering.',
+    descriptions: { hi: 'मुख्य सड़क की स्ट्रीट लाइटें टिमटिमा रही हैं।' },
+    category: 'Electricity',
+    location: 'Rajnagar Ext, Ghaziabad',
+    progress: 'Reported',
+    upvotes: 5,
+    downvotes: 0,
+    authorId: 999,
+    lat: 28.7534,
+    lng: 77.4963,
+    img: 'https://images.unsplash.com/photo-1542482324-4f05cd43cbeb?auto=format&fit=crop&q=80&w=800',
+    priorityScore: 40,
+    priorityLabel: 'Medium',
+  },
+];
+
+function loadLocalIssues() {
+  const saved = localStorage.getItem('cityspark_issues');
+  let issues = saved ? JSON.parse(saved) : [...MOCK_ISSUES];
+  if (!issues.find(i => i.id === 10)) {
+    issues.push(MOCK_ISSUES.find(i => i.id === 10));
+  }
+  return issues;
+}
+
+function notificationsStorageKey(userId) {
+  return `cityspark_notifications_${userId}`;
+}
+
+function defaultWelcomeNotification() {
+  return { id: 1, message: 'Welcome to CitySpark AI!', type: 'info', read: false };
+}
+
+export const AppProvider = ({ children }) => {
+  const { user } = useAuth();
+  const [useRemoteDb, setUseRemoteDb] = useState(false);
+
+  const [issues, setIssues] = useState(loadLocalIssues);
+  const [votes, setVotes] = useState(() => {
+    const saved = localStorage.getItem('cityspark_votes');
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [notifications, setNotifications] = useState([]);
+  const [comments, setComments] = useState(() => {
+    const saved = localStorage.getItem('cityspark_comments');
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [userStats, setUserStats] = useState(() => {
+    const saved = localStorage.getItem('cityspark_user_stats');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  const checkBadges = useCallback((points) => {
+    const badges = [];
+    if (points >= 100) badges.push({ id: 'watcher', name: 'Civic Watcher', icon: '👁️' });
+    if (points >= 500) badges.push({ id: 'guardian', name: 'Community Guardian', icon: '🛡️' });
+    if (points >= 1000) badges.push({ id: 'hero', name: 'City Hero', icon: '🦸' });
+    return badges;
+  }, []);
+
+  const addNotification = useCallback(
+    async (message, type = 'info') => {
+      if (useRemoteDb) {
+        try {
+          const n = await apiJson('/api/notifications', { method: 'POST', body: { message, type } });
+          setNotifications((prev) => [n, ...prev]);
+        } catch (e) { console.error(e); }
+        return;
+      }
+      setNotifications((prev) => [{ id: Date.now(), message, type, read: false }, ...prev]);
+    },
+    [useRemoteDb]
+  );
+
+  const prevUserStats = useRef(userStats);
+  useEffect(() => {
+    Object.keys(userStats).forEach(userId => {
+      const stats = userStats[userId];
+      const prevStats = prevUserStats.current[userId] || { badges: [] };
+      if (stats.badges && stats.badges.length > (prevStats.badges ? prevStats.badges.length : 0)) {
+        const latestBadge = stats.badges[stats.badges.length - 1];
+        addNotification(`Congratulations! You've earned the ${latestBadge.name} badge! ${latestBadge.icon}`, 'success');
+      }
+    });
+    prevUserStats.current = userStats;
+  }, [userStats, addNotification]);
+
+  useEffect(() => {
+    localStorage.setItem('cityspark_user_stats', JSON.stringify(userStats));
+  }, [userStats]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const ok = await apiHealth();
+      if (!ok || cancelled) return;
+      try {
+        const data = await apiJson('/api/bootstrap');
+        if (cancelled) return;
+        setIssues(data.issues || []);
+        setVotes(data.votes || {});
+        setComments(data.comments || {});
+        setUseRemoteDb(true);
+      } catch { /* keep local */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!useRemoteDb || !user?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await apiJson('/api/notifications');
+        if (!cancelled) setNotifications(Array.isArray(list) ? list : []);
+      } catch { if (!cancelled) setNotifications([]); }
+    })();
+    return () => { cancelled = true; };
+  }, [useRemoteDb, user?.id]);
+
+  useLayoutEffect(() => {
+    if (useRemoteDb || !user?.id) return;
+    const key = notificationsStorageKey(user.id);
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        setNotifications(Array.isArray(parsed) ? parsed : [defaultWelcomeNotification()]);
+      } catch { setNotifications([defaultWelcomeNotification()]); }
+    } else {
+      setNotifications([defaultWelcomeNotification()]);
+    }
+  }, [useRemoteDb, user?.id]);
+
+  useEffect(() => {
+    if (useRemoteDb || !user?.id) return;
+    localStorage.setItem(notificationsStorageKey(user.id), JSON.stringify(notifications));
+  }, [notifications, useRemoteDb, user?.id]);
+
+  useEffect(() => {
+    if (!useRemoteDb) localStorage.setItem('cityspark_issues', JSON.stringify(issues));
+  }, [issues, useRemoteDb]);
+
+  useEffect(() => {
+    if (!useRemoteDb) localStorage.setItem('cityspark_votes', JSON.stringify(votes));
+  }, [votes, useRemoteDb]);
+
+  useEffect(() => {
+    if (!useRemoteDb) localStorage.setItem('cityspark_comments', JSON.stringify(comments));
+  }, [comments, useRemoteDb]);
+
+  const awardPoints = useCallback((userId, amount, reason) => {
+    if (!userId) {
+      console.warn('[AppContext] awardPoints failed: No userId provided');
+      return;
+    }
+    
+    console.log(`[AppContext] Awarding ${amount} points to User ${userId} for: ${reason}`);
+    
+    setUserStats(prev => {
+      const stats = prev[userId] || { points: 0, badges: [] };
+      const newPoints = stats.points + amount;
+      const newBadges = checkBadges(newPoints);
+      const newState = { ...prev, [userId]: { points: newPoints, badges: newBadges } };
+      console.log(`[AppContext] Updated UserStats for ${userId}:`, newState[userId]);
+      return newState;
+    });
+
+    addNotification(`+${amount} Civic Points: ${reason}`, 'success');
+  }, [checkBadges, addNotification]);
+
+  const markNotificationRead = useCallback(async (id) => {
+    if (useRemoteDb) {
+      try {
+        await apiJson(`/api/notifications/${id}/read`, { method: 'PATCH' });
+      } catch (e) { console.error(e); }
+    }
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+  }, [useRemoteDb]);
+
+  const markAllRead = useCallback(async () => {
+    if (useRemoteDb) {
+      try {
+        const list = await apiJson('/api/notifications/read-all', { method: 'PATCH' });
+        setNotifications(list);
+        return;
+      } catch (e) { console.error(e); }
+    }
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  }, [useRemoteDb]);
+
+  const clearNotification = useCallback(async (id) => {
+    if (useRemoteDb) {
+      try {
+        await apiJson(`/api/notifications/${id}`, { method: 'DELETE' });
+      } catch (e) { console.error(e); }
+    }
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  }, [useRemoteDb]);
+
+  const voteIssue = useCallback(
+    async (issueId, userId, voteValue, userCoords = null) => {
+      const issueToVote = issues.find(i => i.id === issueId);
+      if (!issueToVote) return;
+      if (userCoords && issueToVote.lat && issueToVote.lng) {
+        if (!isWithinRadius(userCoords.lat, userCoords.lng, issueToVote.lat, issueToVote.lng, 5000)) {
+          addNotification('You must be within 5km to vote on this issue.', 'error');
+          return;
+        }
+      }
+      if (useRemoteDb) {
+        try {
+          const { issue, votesForIssue } = await apiJson(`/api/issues/${issueId}/vote`, { method: 'POST', body: { voteValue } });
+          setVotes((prev) => ({ ...prev, [issueId]: votesForIssue || {} }));
+          setIssues((prev) => prev.map((i) => (i.id === issueId ? { ...i, ...issue } : i)));
+          awardPoints(userId, 10, 'Verifying/Voting on an issue');
+        } catch (e) { console.error('voteIssue', e); }
+        return;
+      }
+      const issueVotes = votes[issueId] || {};
+      const currentVote = issueVotes[userId];
+      const newIssueVotes = { ...issueVotes };
+      let upvoteDiff = 0, downvoteDiff = 0;
+      if (currentVote === voteValue) {
+        delete newIssueVotes[userId];
+        if (voteValue === 1) upvoteDiff = -1;
+        if (voteValue === -1) downvoteDiff = -1;
+      } else {
+        newIssueVotes[userId] = voteValue;
+        if (voteValue === 1) { upvoteDiff = 1; if (currentVote === -1) downvoteDiff = -1; }
+        else if (voteValue === -1) { downvoteDiff = 1; if (currentVote === 1) upvoteDiff = -1; }
+      }
+      setVotes((prev) => ({ ...prev, [issueId]: newIssueVotes }));
+      setIssues((currentIssues) => currentIssues.map((i) => {
+        if (i.id === issueId) {
+          const baseUpvotes = i.upvotes !== undefined ? i.upvotes : i.votes || 0;
+          const baseDownvotes = i.downvotes || 0;
+          const updatedIssue = { ...i, upvotes: baseUpvotes + upvoteDiff, downvotes: baseDownvotes + downvoteDiff };
+          updatedIssue.priorityScore = calculatePriorityScore(updatedIssue, newIssueVotes);
+          updatedIssue.priorityLabel = getPriorityLabel(updatedIssue.priorityScore);
+          return updatedIssue;
+        }
+        return i;
+      }));
+      awardPoints(userId, 10, 'Verifying/Voting on an issue');
+    },
+    [useRemoteDb, votes, issues, addNotification, calculatePriorityScore, getPriorityLabel, awardPoints]
+  );
+
+  const addIssue = useCallback(
+    async (issue) => {
+      const duplicate = findDuplicate(issue, issues);
+      if (duplicate) {
+        await voteIssue(duplicate.id, user?.id || 'anonymous', 1);
+        return { duplicate: true, id: duplicate.id };
+      }
+      const classification = await classifyIssue(issue.title, issue.description);
+      const enrichedIssue = { ...issue, ...classification, isRepeat: analyzePatterns(issue, issues) !== null };
+      const priorityScore = calculatePriorityScore(enrichedIssue);
+      const priorityLabel = getPriorityLabel(priorityScore);
+      const prediction = analyzePatterns(enrichedIssue, issues);
+      const escalation = generateEscalation(enrichedIssue, priorityScore);
+
+      if (useRemoteDb) {
+        try {
+          const { authorId: _a, ...payload } = enrichedIssue;
+          const created = await apiJson('/api/issues', { method: 'POST', body: { ...payload, priority_score: priorityScore, priority_label: priorityLabel, prediction, escalation } });
+          setIssues((prev) => [{ ...created, upvotes: created.upvotes ?? 0, downvotes: created.downvotes ?? 0 }, ...prev]);
+          awardPoints(user?.id, 50, 'Reporting a new civic issue');
+          return created;
+        } catch (e) { console.error('addIssue', e); }
+        return;
+      }
+      const newIssue = { ...enrichedIssue, id: Date.now(), upvotes: 0, downvotes: 0, progress: 'Reported', priorityScore, priorityLabel, prediction, escalation, createdAt: new Date().toISOString() };
+      setIssues((prev) => [newIssue, ...prev]);
+      awardPoints(user?.id, 50, 'Reporting a new civic issue');
+      if (issue.lat && issue.lng) addNotification(`New Issue Reported Nearby: ${issue.title}`, 'nearby');
+      if (escalation) addNotification(`Urgent: ${escalation.message}`, 'warning');
+      else if (prediction) addNotification(`AI Insight: ${prediction.message}`, 'info');
+      return newIssue;
+    },
+    [useRemoteDb, issues, addNotification, user?.id, voteIssue, awardPoints]
+  );
+
+  const addComment = useCallback(
+    async (issueId, comment) => {
+      if (useRemoteDb) {
+        try {
+          const saved = await apiJson(`/api/issues/${issueId}/comments`, { method: 'POST', body: { text: comment.text } });
+          setComments((prev) => ({ ...prev, [issueId]: [...(prev[issueId] || []), saved] }));
+          awardPoints(comment.authorId, 5, 'Contributing to the conversation');
+        } catch (e) { console.error(e); }
+        return;
+      }
+      setComments((prev) => ({ ...prev, [issueId]: [...(prev[issueId] || []), { ...comment, id: Date.now(), timestamp: new Date().toISOString() }] }));
+      awardPoints(comment.authorId, 5, 'Contributing to the conversation');
+    },
+    [useRemoteDb, awardPoints]
+  );
+
+  const assignIssue = useCallback(
+    async (issueId, authorityId, deadline) => {
+      if (useRemoteDb) {
+        try {
+          const updated = await apiJson(`/api/issues/${issueId}/assign`, { method: 'PATCH', body: { authorityId, deadline } });
+          setIssues((prev) => prev.map((i) => (i.id === issueId ? { ...i, ...updated } : i)));
+          addNotification(`Issue #${issueId} Assigned to Authority`, 'info');
+          return updated;
+        } catch (e) { console.error(e); }
+      }
+    },
+    [useRemoteDb, addNotification]
+  );
+
+  const resolveIssue = useCallback(
+    async (issueId, completionImg) => {
+      if (useRemoteDb) {
+        try {
+          const updated = await apiJson(`/api/issues/${issueId}/resolve`, { method: 'PATCH', body: { completionImg } });
+          setIssues((prev) => prev.map((i) => (i.id === issueId ? { ...i, ...updated } : i)));
+          addNotification(`Issue #${issueId} marked as Resolved by Authority`, 'success');
+          return updated;
+        } catch (e) { console.error(e); }
+      }
+    },
+    [useRemoteDb, addNotification]
+  );
+
+  const verifyIssue = useCallback(
+    async (issueId, status, comment) => {
+      if (useRemoteDb) {
+        try {
+          const res = await apiJson(`/api/issues/${issueId}/verify`, { method: 'POST', body: { status, comment } });
+          setIssues((prev) => prev.map((i) => (i.id === issueId ? { ...i, verificationStatus: status } : i)));
+          addNotification(`Verification recorded for Issue #${issueId}`, 'success');
+          if (status === 'Verified') awardPoints(user?.id, 20, 'Verifying a resolved issue');
+          return res;
+        } catch (e) { console.error(e); }
+      }
+    },
+    [useRemoteDb, addNotification, user?.id, awardPoints]
+  );
+
+  return (
+    <AppContext.Provider
+      value={{
+        issues, addIssue, voteIssue, votes, notifications, markNotificationRead, markAllRead, clearNotification, addNotification, comments, addComment, userStats, useRemoteDb,
+        assignIssue, resolveIssue, verifyIssue, isWithinRadius,
+      }}
+    >
+      {children}
+    </AppContext.Provider>
+  );
+};
+
+export const useApp = () => useContext(AppContext);
