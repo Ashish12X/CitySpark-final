@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import {
   User, Mail, Shield, Globe, Bell, Lock, Eye, Moon, Sun,
-  Check, Camera, Smartphone, LogOut, Trophy, Zap, Medal, Target, Star
+  Check, Camera, Smartphone, LogOut, Trophy, Zap, Medal, Target, Star, MapPin
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -225,8 +225,41 @@ const Profile = () => {
           </Card>
         </motion.div>
 
-        {/* Interface Language */}
+        {/* Permanent Location */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+          <Card className="shadow-sm border-border/60">
+            <SectionHeader icon={MapPin} title={t('Permanent Location')} description={t('Your registered civic zone coordinates.')} />
+            <CardContent className="space-y-4">
+               <div className="bg-muted/30 border border-border/50 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                     <div className="p-3 bg-primary/10 rounded-full text-primary shadow-inner">
+                        <MapPin className="w-5 h-5" />
+                     </div>
+                     <div>
+                        <p className="font-semibold text-sm">{user?.address || t('Location Verified')}</p>
+                        <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                           {user?.lat ? `${user.lat.toFixed(6)}, ${user.lng.toFixed(6)}` : t('Coordinates not bound')}
+                        </p>
+                     </div>
+                  </div>
+                  <div className="md:text-right">
+                     <span className="inline-block px-2.5 py-1 text-[10px] rounded-lg bg-emerald-500/10 text-emerald-600 font-bold uppercase tracking-wider border border-emerald-500/20 shadow-sm">
+                       <Shield className="w-3 h-3 inline-block mr-1 mb-0.5"/> {t('GPS Locked')}
+                     </span>
+                  </div>
+               </div>
+               <div className="flex items-start gap-2 text-xs text-muted-foreground p-3 rounded-lg bg-background border border-border/50 shadow-sm">
+                  <Globe className="w-4 h-4 shrink-0 text-primary mt-0.5" />
+                  <p className="leading-relaxed">
+                    {t('To change your location, contact support:')} <a href="mailto:support@cityspark.ai" className="text-primary hover:underline font-bold ml-1">support@cityspark.ai</a>
+                  </p>
+               </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Interface Language */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
           <Card className="shadow-sm border-border/60 overflow-hidden">
             <SectionHeader icon={Globe} title={t('Interface Language')} description={t('Choose your preferred language for the entire platform.')} />
             <CardContent className="bg-muted/10 p-4 sm:p-6">
@@ -253,7 +286,7 @@ const Profile = () => {
         </motion.div>
 
         {/* Visual Appearance */}
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <Card className="shadow-sm border-border/60">
             <SectionHeader icon={Eye} title={t('Visual Appearance')} description={t('Customize the interface theme to suit your preference.')} />
             <CardContent>
@@ -282,7 +315,7 @@ const Profile = () => {
         </motion.div>
 
         {/* Notifications */}
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
           <Card className="shadow-sm border-border/60">
             <SectionHeader icon={Bell} title={t('Notifications')} description={t('Select which updates you want to receive.')} />
             <CardContent className="divide-y divide-border/50 space-y-1">
@@ -295,7 +328,7 @@ const Profile = () => {
         </motion.div>
 
         {/* Security / Password */}
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
           <Card className="shadow-sm border-border/60">
             <SectionHeader icon={Shield} title={t('Security')} description={t('Secure your account by updating your password periodically.')} />
             <CardContent className="space-y-6">

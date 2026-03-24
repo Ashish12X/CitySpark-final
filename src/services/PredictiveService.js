@@ -31,6 +31,7 @@ export const analyzePatterns = (newIssue, allIssues) => {
     return {
       type: 'Predictive Alert',
       message: alertMessage,
+      reasoning: alertMessage,
       riskLevel: 'High',
       count: count
     };

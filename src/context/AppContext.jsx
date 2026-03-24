@@ -171,6 +171,19 @@ export const AppProvider = ({ children }) => {
     return badges;
   }, []);
 
+  const addAuditLog = useCallback((issueId, action, performedBy, previousStatus, newStatus) => {
+    setIssues(prev => prev.map(i => {
+      if (i.id === issueId) {
+        const logs = i.auditLogs || [];
+        return { 
+          ...i, 
+          auditLogs: [...logs, { timestamp: new Date().toISOString(), action, performedBy, previousStatus, newStatus }] 
+        };
+      }
+      return i;
+    }));
+  }, []);
+
   const addNotification = useCallback(
     async (message, type = 'info') => {
       if (useRemoteDb) {
@@ -231,6 +244,22 @@ export const AppProvider = ({ children }) => {
     return () => { cancelled = true; };
   }, [useRemoteDb, user?.id]);
 
+  // Dynamic Deadline Escalation Engine
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      setIssues(prev => prev.map(i => {
+        if (i.deadline && new Date(i.deadline) < now && i.progress === 'In Progress') {
+          addNotification(`SLA Breach: Issue [${i.title}] auto-escalated to higher authority.`, 'warning');
+          addAuditLog(i.id, 'SLA Breach Auto-Escalation', 'System AI', i.progress, 'Escalated');
+          return { ...i, progress: 'Escalated', priorityScore: 100, priorityLabel: 'Critical' };
+        }
+        return i;
+      }));
+    }, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, [addAuditLog, addNotification]);
+
   useLayoutEffect(() => {
     if (useRemoteDb || !user?.id) return;
     const key = notificationsStorageKey(user.id);
@@ -271,10 +300,17 @@ export const AppProvider = ({ children }) => {
     console.log(`[AppContext] Awarding ${amount} points to User ${userId} for: ${reason}`);
     
     setUserStats(prev => {
-      const stats = prev[userId] || { points: 0, badges: [] };
+      const stats = prev[userId] || { points: 0, badges: [], trustScore: 50 };
       const newPoints = stats.points + amount;
+      
+      // Dynamic Trust Score Logic
+      let trustAdjustment = 0;
+      if (reason.toLowerCase().includes('verified')) trustAdjustment = 5;
+      if (reason.toLowerCase().includes('rejected')) trustAdjustment = -10;
+      const newTrust = Math.min(Math.max((stats.trustScore || 50) + trustAdjustment, 0), 100);
+
       const newBadges = checkBadges(newPoints);
-      const newState = { ...prev, [userId]: { points: newPoints, badges: newBadges } };
+      const newState = { ...prev, [userId]: { points: newPoints, badges: newBadges, trustScore: newTrust } };
       console.log(`[AppContext] Updated UserStats for ${userId}:`, newState[userId]);
       return newState;
     });
@@ -315,23 +351,52 @@ export const AppProvider = ({ children }) => {
     async (issueId, userId, voteValue, userCoords = null) => {
       const issueToVote = issues.find(i => i.id === issueId);
       if (!issueToVote) return;
-      if (userCoords && issueToVote.lat && issueToVote.lng) {
-        if (!isWithinRadius(userCoords.lat, userCoords.lng, issueToVote.lat, issueToVote.lng, 5000)) {
-          addNotification('You must be within 5km to vote on this issue.', 'error');
+      
+      const targetCoords = (user && user.lat && user.lng) ? { lat: user.lat, lng: user.lng } : userCoords;
+
+      if (targetCoords && issueToVote.lat && issueToVote.lng) {
+        if (!isWithinRadius(targetCoords.lat, targetCoords.lng, issueToVote.lat, issueToVote.lng, 5000)) {
+          addNotification('You can only vote for issues near your location', 'error');
           return;
         }
+      } else {
+        addNotification('You can only vote for issues near your location', 'error');
+        return;
       }
+
+      // Simulated Device ID Check (Anti-Gaming)
+      const deviceId = localStorage.getItem('cityspark_device_id') || 'dev_' + Math.random().toString(36).substr(2, 9);
+      if (!localStorage.getItem('cityspark_device_id')) localStorage.setItem('cityspark_device_id', deviceId);
+      
+      const votedDevices = JSON.parse(localStorage.getItem(`cityspark_voted_${issueId}`) || '[]');
+      if (voteValue !== 0 && votedDevices.includes(deviceId) && !votes[issueId]?.[userId]) {
+        addNotification('Security Alert: Multiple votes from same device detected.', 'warning');
+        return;
+      }
+
+      const issueVotes = votes[issueId] || {};
+      const currentVote = issueVotes[userId];
+      let pointsAwarded = 0;
+      let reason = 'Voting on an issue';
+
+      if (currentVote === voteValue) {
+         pointsAwarded = -10;
+         reason = 'Removed vote from an issue';
+      } else {
+         pointsAwarded = currentVote ? 0 : 10;
+         reason = voteValue === 1 ? 'Upvoted an issue' : 'Downvoted an issue';
+      }
+
       if (useRemoteDb) {
         try {
           const { issue, votesForIssue } = await apiJson(`/api/issues/${issueId}/vote`, { method: 'POST', body: { voteValue } });
           setVotes((prev) => ({ ...prev, [issueId]: votesForIssue || {} }));
           setIssues((prev) => prev.map((i) => (i.id === issueId ? { ...i, ...issue } : i)));
-          awardPoints(userId, 10, 'Verifying/Voting on an issue');
+          if (pointsAwarded !== 0) awardPoints(userId, pointsAwarded, reason);
         } catch (e) { console.error('voteIssue', e); }
         return;
       }
-      const issueVotes = votes[issueId] || {};
-      const currentVote = issueVotes[userId];
+      
       const newIssueVotes = { ...issueVotes };
       let upvoteDiff = 0, downvoteDiff = 0;
       if (currentVote === voteValue) {
@@ -344,18 +409,43 @@ export const AppProvider = ({ children }) => {
         else if (voteValue === -1) { downvoteDiff = 1; if (currentVote === 1) upvoteDiff = -1; }
       }
       setVotes((prev) => ({ ...prev, [issueId]: newIssueVotes }));
+      
+      // Update Device Map for anti-gaming
+      if (voteValue !== 0 && !votedDevices.includes(deviceId)) {
+        localStorage.setItem(`cityspark_voted_${issueId}`, JSON.stringify([...votedDevices, deviceId]));
+      }
+
       setIssues((currentIssues) => currentIssues.map((i) => {
         if (i.id === issueId) {
           const baseUpvotes = i.upvotes !== undefined ? i.upvotes : i.votes || 0;
           const baseDownvotes = i.downvotes || 0;
-          const updatedIssue = { ...i, upvotes: baseUpvotes + upvoteDiff, downvotes: baseDownvotes + downvoteDiff };
+          const newUpvotes = baseUpvotes + upvoteDiff;
+          const newDownvotes = baseDownvotes + downvoteDiff;
+          
+          const totalVotes = Object.keys(newIssueVotes).length;
+          const upvoteCount = Object.values(newIssueVotes).filter(v => v === 1).length;
+          
+          // Dynamic Threshold Logic: 25% of nearby active users
+          const nearbyUsers = Object.values(userStats).filter(u => u.points > 10).length || 10; // Fallback to 10
+          const dynamicThreshold = Math.max(3, Math.floor(nearbyUsers * 0.25));
+          
+          const updatedIssue = { ...i, upvotes: newUpvotes, downvotes: newDownvotes };
+          
+          if (totalVotes >= dynamicThreshold && (upvoteCount / totalVotes) >= 0.7 && i.verificationStatus !== 'Verified') {
+            updatedIssue.verificationStatus = 'Verified';
+            updatedIssue.progress = 'Reported';
+            addNotification(`Issue [${i.title}] has been community verified! Threshold met: ${dynamicThreshold} votes.`, 'success');
+            awardPoints(i.authorId, 50, 'Issue reached dynamic verification threshold');
+            addAuditLog(i.id, 'Community Auto-Verification', 'Civic Network', 'Pending', 'Verified');
+          }
+
           updatedIssue.priorityScore = calculatePriorityScore(updatedIssue, newIssueVotes);
           updatedIssue.priorityLabel = getPriorityLabel(updatedIssue.priorityScore);
           return updatedIssue;
         }
         return i;
       }));
-      awardPoints(userId, 10, 'Verifying/Voting on an issue');
+      if (pointsAwarded !== 0) awardPoints(userId, pointsAwarded, reason);
     },
     [useRemoteDb, votes, issues, addNotification, calculatePriorityScore, getPriorityLabel, awardPoints]
   );
@@ -416,11 +506,23 @@ export const AppProvider = ({ children }) => {
       if (useRemoteDb) {
         try {
           const updated = await apiJson(`/api/issues/${issueId}/assign`, { method: 'PATCH', body: { authorityId, deadline } });
-          setIssues((prev) => prev.map((i) => (i.id === issueId ? { ...i, ...updated } : i)));
-          addNotification(`Issue #${issueId} Assigned to Authority`, 'info');
+          setIssues((prev) => {
+            const list = prev.map((i) => (i.id === issueId ? { ...i, ...updated } : i));
+            const issue = list.find(l => l.id === issueId);
+            if (issue) addNotification(`Your report [${issue.title}] has been assigned to ${authorityId}`, 'info');
+            return list;
+          });
           return updated;
         } catch (e) { console.error(e); }
       }
+      setIssues(prev => prev.map(i => {
+        if (i.id === issueId) {
+          addNotification(`Your report [${i.title}] has been assigned to ${authorityId}`, 'info');
+          addAuditLog(i.id, 'Manual Assignment', 'Admin', i.progress, 'In Progress');
+          return { ...i, assignedTo: authorityId, progress: 'In Progress', deadline };
+        }
+        return i;
+      }));
     },
     [useRemoteDb, addNotification]
   );
@@ -430,11 +532,23 @@ export const AppProvider = ({ children }) => {
       if (useRemoteDb) {
         try {
           const updated = await apiJson(`/api/issues/${issueId}/resolve`, { method: 'PATCH', body: { completionImg } });
-          setIssues((prev) => prev.map((i) => (i.id === issueId ? { ...i, ...updated } : i)));
-          addNotification(`Issue #${issueId} marked as Resolved by Authority`, 'success');
+          setIssues((prev) => {
+            const list = prev.map((i) => (i.id === issueId ? { ...i, ...updated } : i));
+            const issue = list.find(l => l.id === issueId);
+            if (issue) addNotification(`GREAT NEWS! Your report [${issue.title}] is marked as Fixed. Please verify.`, 'success');
+            return list;
+          });
           return updated;
         } catch (e) { console.error(e); }
       }
+      setIssues(prev => prev.map(i => {
+        if (i.id === issueId) {
+          addNotification(`GREAT NEWS! Your report [${i.title}] is marked as Fixed. Please verify.`, 'success');
+          addAuditLog(i.id, 'Issue Resolved', i.assignedTo || 'Authority', i.progress, 'Resolved');
+          return { ...i, progress: 'Resolved', completionImg, verificationStatus: 'Pending' };
+        }
+        return i;
+      }));
     },
     [useRemoteDb, addNotification]
   );
@@ -450,6 +564,22 @@ export const AppProvider = ({ children }) => {
           return res;
         } catch (e) { console.error(e); }
       }
+      setIssues(prev => prev.map(i => {
+        if (i.id === issueId) {
+          if (status === 'Rejected') {
+            addNotification(`Escalation Alert: Issue [${i.title}] fix rejected by user. Re-assigning...`, 'warning');
+            addAuditLog(i.id, 'Resolution Rejected', user?.id || 'User', 'Resolved', 'In Progress');
+            const newScore = Math.min((i.priorityScore || 50) + 25, 100);
+            return { ...i, verificationStatus: 'Rejected', progress: 'In Progress', priorityScore: newScore, priorityLabel: getPriorityLabel(newScore) };
+          }
+          if (status === 'Verified') {
+             awardPoints(user?.id, 20, 'Verifying a resolved issue');
+             addAuditLog(i.id, 'User Verified Fix', user?.id || 'User', 'Resolved', 'Closed (Verified)');
+          }
+          return { ...i, verificationStatus: status };
+        }
+        return i;
+      }));
     },
     [useRemoteDb, addNotification, user?.id, awardPoints]
   );

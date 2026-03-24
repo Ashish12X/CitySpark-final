@@ -45,7 +45,7 @@ export const getPriorityLabel = (score) => {
  * Uses AI to classify issue details
  */
 export const classifyIssue = async (title, description) => {
-  const prompt = `Classify this civic issue:\nTitle: ${title}\nDescription: ${description}\n\nReturn JSON only: { "severity": "Low|Medium|High|Critical", "urgency": "Low|Medium|High", "category": "Infrastructure|Water|Electricity|Sanitation|Other", "is_emergency": boolean }`;
+  const prompt = `Classify this civic issue:\nTitle: ${title}\nDescription: ${description}\n\nReturn JSON only: { "severity": "Low|Medium|High|Critical", "urgency": "Low|Medium|High", "category": "Infrastructure|Water|Electricity|Sanitation|Other", "is_emergency": boolean, "department": "string" }`;
   
   try {
     const aiResponse = await translateWithGemini(prompt, 'en'); // Using Gemini for analysis
@@ -58,5 +58,5 @@ export const classifyIssue = async (title, description) => {
     console.error('AI Classification failed:', err);
   }
   
-  return { severity: 'Medium', urgency: 'Medium', category: 'Infrastructure', is_emergency: false };
+  return { severity: 'Medium', urgency: 'Medium', category: 'Infrastructure', is_emergency: false, department: 'General Public Works' };
 };

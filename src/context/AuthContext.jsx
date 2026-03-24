@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { apiHealth, apiJson, getStoredToken, setStoredToken, clearAuthStorage } from '@/lib/api';
+import { signInWithGoogle } from '@/lib/firebase';
 
 const AuthContext = createContext();
 
@@ -87,19 +88,19 @@ export const AuthProvider = ({ children }) => {
     setStoredToken(null);
   };
 
-  const signup = async (name, email, password, phone, address) => {
+  const signup = async (name, email, password, phone, address, zip, lat, lng) => {
     const serverUp = await apiHealth();
     if (serverUp) {
       const data = await apiJson('/api/auth/signup', {
         method: 'POST',
-        body: { name, email, password, phone, address },
+        body: { name, email, password, phone, address, zip, lat, lng },
         skipAuth: true,
       });
       setUser(data.user);
       persistSession(data.user, data.token);
       return;
     }
-    const mockUser = { id: Date.now(), email, name, role: 'user', phone, address, isVerified: false };
+    const mockUser = { id: Date.now(), email, name, role: 'user', phone, address, zip, lat, lng, isVerified: false };
     setUser(mockUser);
     localStorage.setItem('cityspark_user', JSON.stringify(mockUser));
     setStoredToken(null);
@@ -132,8 +133,21 @@ export const AuthProvider = ({ children }) => {
     clearAuthStorage();
   }, []);
 
+  const loginWithGoogle = async () => {
+    try {
+      const result = await signInWithGoogle();
+      if (result && result.user) {
+        return result.user; // return the firebase user
+      }
+      return null;
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, sessionChecked, sendOtp, verifyOtp }}>
+    <AuthContext.Provider value={{ user, login, signup, logout, sessionChecked, sendOtp, verifyOtp, loginWithGoogle }}>
       {children}
     </AuthContext.Provider>
   );

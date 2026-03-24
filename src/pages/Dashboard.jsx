@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { 
   Activity, CheckCircle, Clock, AlertTriangle, FileText, Bell, MapPin, 
-  Tag, X, ChevronDown, ChevronUp, ShieldCheck, UserCheck, Send, Image as ImageIcon 
+  Tag, X, ChevronDown, ChevronUp, ShieldCheck, UserCheck, Send, Image as ImageIcon, ArrowRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiJson } from '@/lib/api';
@@ -98,6 +98,12 @@ const IssueDetailRow = ({ issue, isAuthority = false, onAction }) => {
                          {issue.priorityLabel && <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded font-black uppercase">{t(issue.priorityLabel)}</span>}
                          {issue.isRepeat && <span className="text-[10px] bg-orange-100 text-orange-700 px-2 py-0.5 rounded font-black uppercase">{t('RECURRING')}</span>}
                        </div>
+                       {issue.prediction?.reasoning && (
+                         <div className="p-3 bg-primary/5 border border-primary/20 rounded-xl">
+                            <p className="text-[10px] font-black uppercase text-primary mb-1 tracking-widest">{t('AI Intelligence Reasoning')}</p>
+                            <p className="text-xs italic text-primary leading-tight">" {t(issue.prediction.reasoning)} "</p>
+                         </div>
+                       )}
                     </div>
                     <div className="bg-muted/30 rounded-xl p-3 space-y-2">
                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t('Meta Information')}</p>
@@ -108,6 +114,29 @@ const IssueDetailRow = ({ issue, isAuthority = false, onAction }) => {
                        </div>
                     </div>
                   </div>
+
+                  {issue.auditLogs && issue.auditLogs.length > 0 && (
+                     <div className="mt-4 bg-muted/20 rounded-xl p-4 border border-border/40">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
+                           <ShieldCheck className="w-3 h-3"/> {t('System Audit Log / Chain of Custody')}
+                        </p>
+                        <div className="space-y-3">
+                           {issue.auditLogs.map((log, idx) => (
+                              <div key={idx} className="flex gap-3 text-[11px]">
+                                 <div className="w-20 shrink-0 text-muted-foreground font-mono">{new Date(log.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                                 <div className="flex-1 space-y-0.5">
+                                    <div className="font-bold text-foreground capitalize">{t(log.action)} <span className="text-muted-foreground lowercase">{t('by')}</span> {log.performedBy === user?.id ? t('You') : log.performedBy}</div>
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                       <span className="bg-muted px-1 rounded">{t(log.previousStatus)}</span>
+                                       <ArrowRight className="w-2.5 h-2.5" />
+                                       <span className="bg-primary/10 text-primary px-1 rounded">{t(log.newStatus)}</span>
+                                    </div>
+                                 </div>
+                              </div>
+                           ))}
+                        </div>
+                     </div>
+                  )}
 
                   {/* Actions based on role and status */}
                   <div className="flex justify-end gap-2 pt-2">
@@ -228,7 +257,7 @@ const AdminDashboard = ({ issues, stats }) => {
             <span className="text-[10px] bg-red-600 text-white px-2 py-1 rounded-full animate-pulse">{t('LIVE CONTROL')}</span>
           </h3>
           <div className="space-y-4">
-             {issues.filter(i => i.priorityScore > 60 || i.prediction).map(issue => (
+             {issues.filter(i => i.priorityScore > 60 || i.prediction).sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0)).map(issue => (
                <Card key={issue.id} className="shadow-antigravity border-l-4 border-l-red-500">
                   <CardContent className="p-5 flex flex-col md:flex-row justify-between gap-4">
                     <div className="space-y-1">
@@ -293,9 +322,9 @@ const Dashboard = () => {
     }
   }, []);
 
-  const filteredIssues = user?.role === 'user' && userCoords
+  const filteredIssues = (user?.role === 'user' && userCoords
     ? issues.filter(i => isWithinRadius({ lat: i.lat, lng: i.lng }, userCoords, 5))
-    : issues;
+    : issues).sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0));
 
   const unreadCount = notifications.filter(n => !n.read).length;
 

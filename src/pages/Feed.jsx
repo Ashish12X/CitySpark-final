@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ThumbsUp, ThumbsDown, MapPin, Tag, Clock, ArrowUpDown, Filter, Search, MessageSquare, MoreHorizontal, Plus, ChevronDown, Send, ShieldCheck, AlertTriangle, Zap, Activity } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/DropdownMenu';
-import { Input } from '@/components/ui/Input';
+import { SmartInput } from '@/components/ui/SmartInput';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 
@@ -179,13 +179,13 @@ const IssueCard = ({ issue, onVote, userVote, issueComments, onAddComment, curre
                   </div>
                   
                   <form onSubmit={handleCommentSubmit} className="flex gap-2 relative">
-                    <Input 
+                    <SmartInput 
                       placeholder={currentUser ? t('Add a comment...') : t('Log in to comment')}
                       className="bg-background shadow-sm pr-10 rounded-full h-9 text-sm"
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
+                      onVoiceUpdate={(text) => setNewComment(newComment ? newComment + ' ' + text : text)}
                       disabled={!currentUser}
-                      voice={!!currentUser}
                     />
                     <Button 
                       type="submit" 

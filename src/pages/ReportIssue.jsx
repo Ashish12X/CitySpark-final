@@ -5,7 +5,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Textarea } from '@/components/ui/Textarea';
+import { SmartInput } from '@/components/ui/SmartInput';
+import { SmartTextarea } from '@/components/ui/SmartTextarea';
 import { Label } from '@/components/ui/Label';
 import { Card, CardContent, CardFooter } from '@/components/ui/Card';
 import { Image as ImageIcon, MapPin, Navigation, AlertCircle, CheckCircle2, ArrowRight, X, Upload, Loader2, Zap, ShieldCheck } from 'lucide-react';
@@ -118,7 +119,7 @@ const ReportIssue = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">{t('Issue Title')}</Label>
-                    <Input required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} placeholder={t('eg: Water leakage on Main St')} voice />
+                    <SmartInput required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} onVoiceUpdate={t => setFormData({...formData, title: formData.title ? formData.title + ' ' + t : t})} placeholder={t('eg: Water leakage on Main St')} />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">{t('Category')}</Label>
@@ -130,17 +131,20 @@ const ReportIssue = () => {
 
                 <div className="space-y-1">
                    <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">{t('Description')}</Label>
-                   <Textarea required className="min-h-[100px]" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} placeholder={t('Provide details for AI analysis...')} voice />
+                   <SmartTextarea required className="min-h-[100px]" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} onVoiceUpdate={t => setFormData({...formData, description: formData.description ? formData.description + ' ' + t : t})} placeholder={t('Provide details for AI analysis...')} />
                 </div>
 
                 <div className="space-y-1">
                    <div className="flex justify-between items-end mb-1">
                       <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">{t('Location Intelligence')}</Label>
-                      <Button type="button" variant="ghost" size="sm" className="h-6 text-[10px] font-bold text-primary px-2" onClick={fetchLocation}>{t('REFRESH GPS')}</Button>
+                      <Button type="button" variant="ghost" size="sm" className="h-6 text-[10px] font-bold text-primary px-2" onClick={fetchLocation} disabled={geoStatus === 'loading'}>
+                        {geoStatus === 'loading' ? <Loader2 className="w-3 h-3 animate-spin mr-1 inline" /> : null}
+                        {geoStatus === 'loading' ? t('FETCHING...') : t('REFRESH GPS')}
+                      </Button>
                    </div>
                    <div className="relative">
-                      <MapPin className="absolute left-3 top-3 h-4 w-4 text-primary" />
-                      <Input required className="pl-9" value={formData.locationText} onChange={e => setFormData({...formData, locationText: e.target.value})} placeholder={t('Street name or detect automatically')} voice />
+                      <MapPin className="absolute left-3 top-3 h-4 w-4 z-10 text-muted-foreground" />
+                      <Input readOnly disabled className="pl-9 bg-muted/40 cursor-not-allowed text-xs font-mono opacity-100" value={formData.locationText || (geoStatus === 'loading' ? t('Fetching coordinates...') : '')} placeholder={t('Auto-detecting location...')} />
                    </div>
                 </div>
               </div>

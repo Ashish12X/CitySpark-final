@@ -45,6 +45,10 @@ export const findDuplicate = (newIssue, existingIssues) => {
   return existingIssues.find(existing => {
     // 1. Check distance
     const distance = getDistance(newIssue.lat, newIssue.lng, existing.lat, existing.lng);
+    
+    // Very close proximity + same category = strong duplicate signal
+    if (distance < 15 && newIssue.category === existing.category) return true;
+    
     if (distance > DUPLICATE_RADIUS_METERS) return false;
 
     // 2. Check category
@@ -52,9 +56,11 @@ export const findDuplicate = (newIssue, existingIssues) => {
       return false;
     }
 
-    // 3. Check text similarity
+    // 3. Check text similarity (Weighted by distance)
     const similarity = stringSimilarity(newIssue.description.toLowerCase(), existing.description.toLowerCase());
-    return similarity >= SIMILARITY_THRESHOLD;
+    const requiredSimilarity = distance < 25 ? 0.6 : SIMILARITY_THRESHOLD;
+    
+    return similarity >= requiredSimilarity;
   });
 };
 

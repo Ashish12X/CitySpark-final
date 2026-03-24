@@ -278,9 +278,9 @@ const Navbar = () => {
 
 const AppLayout = () => {
   return (
-    <div className="min-h-screen bg-background flex flex-col font-sans relative">
+    <div className="min-h-screen bg-background flex flex-col font-sans relative overflow-x-hidden w-full max-w-[100vw]">
       <Navbar />
-      <main className="flex-1 w-full max-w-full flex flex-col">
+      <main className="flex-1 w-full max-w-7xl mx-auto flex flex-col">
         <Outlet />
       </main>
       <Footer />

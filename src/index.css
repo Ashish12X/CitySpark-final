@@ -69,7 +69,7 @@
     @apply border-border;
   }
   html, body {
-    @apply bg-background text-foreground tracking-tight antialiased w-full;
+    @apply bg-background text-foreground tracking-tight antialiased w-full overflow-x-hidden max-w-[100vw];
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 }
