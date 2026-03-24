@@ -27,7 +27,7 @@ const ReportIssue = () => {
   const { t } = useLanguage();
   const fileInputRef = useRef(null);
 
-  const [formData, setFormData] = useState({ title: '', description: '', category: 'Infrastructure', locationText: '' });
+  const [formData, setFormData] = useState({ title: '', description: '', category: 'Infrastructure', locationText: '', address: '' });
   const [coords, setCoords] = useState(null);
   const [geoStatus, setGeoStatus] = useState('idle');
   const [imagePreview, setImagePreview] = useState(null);
@@ -131,7 +131,12 @@ const ReportIssue = () => {
 
                 <div className="space-y-1">
                    <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">{t('Description')}</Label>
-                   <SmartTextarea required className="min-h-[100px]" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} onVoiceUpdate={t => setFormData({...formData, description: formData.description ? formData.description + ' ' + t : t})} placeholder={t('Provide details for AI analysis...')} />
+                   <SmartTextarea required className="min-h-[100px]" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} onVoiceUpdate={text => setFormData({...formData, description: formData.description ? formData.description + ' ' + text : text})} placeholder={t('Provide details for AI analysis...')} />
+                </div>
+
+                <div className="space-y-1">
+                   <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">{t('Address')}</Label>
+                   <SmartInput required value={formData.address || ''} onChange={e => setFormData({...formData, address: e.target.value})} onVoiceUpdate={text => setFormData({...formData, address: formData.address ? formData.address + ' ' + text : text})} placeholder={t('e.g., 123 Main St, Near Central Park')} />
                 </div>
 
                 <div className="space-y-1">

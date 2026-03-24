@@ -69,6 +69,7 @@ router.post('/', requireAuth, async (req, res) => {
       description: req.body.description || '',
       category: aiFeatures.category || req.body.category,
       location: req.body.location || '',
+      address: req.body.address || '',
       lat: req.body.lat,
       lng: req.body.lng,
       authorId: req.user.id,

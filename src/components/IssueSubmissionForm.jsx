@@ -25,6 +25,7 @@ const IssueSubmissionForm = ({ location, onClose }) => {
     description: '',
     category: 'Infrastructure',
     locationText: location ? `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` : '',
+    address: '',
   });
 
   const handleSubmit = async (e) => {
@@ -34,6 +35,7 @@ const IssueSubmissionForm = ({ location, onClose }) => {
       description: formData.description,
       category: formData.category,
       location: formData.locationText,
+      address: formData.address,
       lat: location?.lat,
       lng: location?.lng,
       authorId: user?.id,
@@ -94,6 +96,15 @@ const IssueSubmissionForm = ({ location, onClose }) => {
               <Input id="locationText" className="pl-9" value={formData.locationText} readOnly />
             </div>
             <p className="text-xs text-muted-foreground mt-1">{t('Location automatically detected from map pin.')}</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="address">{t('Address')}</Label>
+            <Input
+              id="address"
+              placeholder={t('e.g., 123 Main St, Near Central Park')}
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+            />
           </div>
 
           <div className="border border-dashed rounded-lg p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-secondary/50 transition-colors mt-2">

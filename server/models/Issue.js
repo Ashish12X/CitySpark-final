@@ -20,6 +20,7 @@ const IssueSchema = new mongoose.Schema(
     descriptions: { type: mongoose.Schema.Types.Mixed, default: undefined },
     category: String,
     location: String,
+    address: String,
     progress: { type: String, default: 'Reported' },
     upvotes: { type: Number, default: 0 },
     downvotes: { type: Number, default: 0 },

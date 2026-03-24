@@ -37,47 +37,41 @@ export const parseAadhaar = async (file) => {
     console.log("OCR Result:", text);
     
     const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+    const fullText = text.replace(/\n/g, ' ');
     
     let name = '';
     let address = '';
     let pin = '';
+    let phone = '';
 
     // 1. PIN Code (6 digits in India)
     const pinMatch = text.match(/\b\d{6}\b/);
     if (pinMatch) pin = pinMatch[0];
 
-    // 2. Address heuristics
-    const addressKeywords = ['address', 'add:', 'add', 'c/o', 's/o', 'd/o', 'w/o'];
-    for (let i = 0; i < lines.length; i++) {
-      const lowerLine = lines[i].toLowerCase();
-      // Look for a line containing address keywords
-      if (addressKeywords.some(kw => lowerLine.includes(kw) || lowerLine.startsWith(kw))) {
-        let addrLines = [];
-        for (let j = i; j < Math.min(i + 4, lines.length); j++) {
-           addrLines.push(lines[j]);
-           // Stop if the line ends with a numeric PIN
-           if (/\b\d{6}\b/.test(lines[j])) break; 
-        }
-        address = addrLines.join(', ').replace(/^(address|add)[\s:,-]*/i, '').trim();
-        break;
-      }
-    }
+    // 2. Phone Number (10 digits starting with 6-9)
+    const phoneMatch = text.match(/\b[6-9]\d{9}\b/);
+    if (phoneMatch) phone = phoneMatch[0];
+
+    // 3. Address heuristics (Back side of Aadhaar)
+    // Matches "Address:", "C/O", "S/O", etc., and captures everything up to the 6 digit pincode.
+    const addrRegex = /(?:Address|Addres|Add|C\/O|S\/O|D\/O|W\/O)[\s:,-]*([\s\S]*?\b\d{6}\b)/i;
+    const addrMatch = fullText.match(addrRegex);
     
-    if (!address && pin) {
-       // fallback: find pin line and snag surrounding lines for address
+    if (addrMatch) {
+       address = addrMatch[1].trim();
+    } else {
+       // Fallback: finding the pin line
        const pinIndex = lines.findIndex(l => /\b\d{6}\b/.test(l));
        if (pinIndex >= 1) {
           address = lines.slice(Math.max(0, pinIndex - 2), pinIndex + 1).join(', ');
        }
     }
 
-    // 3. Name heuristics
+    // 4. Name heuristics (Front side)
     const dobIndex = lines.findIndex(l => l.toLowerCase().includes('dob') || l.toLowerCase().includes('year') || l.toLowerCase().includes('yob'));
     if (dobIndex > 0) {
-      // Name is strictly above the DOB block in new Aadhaar layout
       name = lines[dobIndex - 1];
     } else {
-      // Heuristic scan for alphabetic name at the top
       for (let i = 0; i < Math.min(6, lines.length); i++) {
         const line = lines[i];
         const lower = line.toLowerCase();
@@ -88,13 +82,13 @@ export const parseAadhaar = async (file) => {
       }
     }
     
-    // Clean up name artifacts
     if (name) name = name.replace(/[^a-zA-Z\s.-]/g, '').trim();
 
     return {
-      name: name || lines[0] || 'Unknown Name',
-      zip: pin || '000000',
-      address: address || text.replace(/\n/g, ' ').substring(0, 150) || 'Unknown Address'
+      name: name || '',
+      zip: pin || '',
+      address: address || '',
+      phone: phone || ''
     };
 
   } catch (e) {

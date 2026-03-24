@@ -113,9 +113,10 @@ const Auth = ({ isLogin = true }) => {
       const data = await parseAadhaar(file);
       setFormData(prev => ({
         ...prev,
-        name: data.name,
-        address: data.address,
-        zip: data.zip,
+        name: data.name || prev.name,
+        address: data.address || prev.address,
+        zip: data.zip || prev.zip,
+        phone: data.phone || prev.phone,
       }));
     } catch (err) {
       console.error(err);

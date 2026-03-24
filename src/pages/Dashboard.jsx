@@ -75,6 +75,9 @@ const IssueDetailRow = ({ issue, isAuthority = false, onAction }) => {
                   <Tag className="w-3 h-3" /> {t(issue.category)}
                   {issue.department && <><span className="mx-1">•</span>🏢 {t(issue.department)}</>}
                 </p>
+                {issue.address && (
+                  <p className="text-[11px] text-muted-foreground mt-0.5 italic">📍 {issue.address}</p>
+                )}
               </div>
             </div>
             <div className="flex flex-row-reverse sm:flex-row items-center justify-end gap-3">
@@ -267,6 +270,7 @@ const AdminDashboard = ({ issues, stats }) => {
                       </div>
                       <h4 className="font-bold text-lg">{t(issue.title)}</h4>
                       <p className="text-xs text-muted-foreground flex items-center gap-1.5"><MapPin className="w-3 h-3" /> {t(issue.location)}</p>
+                      {issue.address && <p className="text-[11px] text-muted-foreground mt-0.5 italic">📍 {issue.address}</p>}
                       {issue.prediction && <p className="mt-3 text-xs bg-primary/5 p-3 rounded-xl border border-primary/10 text-primary font-medium italic">⚠️ {t(issue.prediction.message)}</p>}
                     </div>
                     <div className="flex flex-col gap-2 justify-center">

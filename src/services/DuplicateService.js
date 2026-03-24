@@ -3,8 +3,8 @@
  */
 import { getDistance } from '@/lib/geoUtils';
 
-const DUPLICATE_RADIUS_METERS = 50; // 50 meters
-const SIMILARITY_THRESHOLD = 0.7; // 70% similarity
+const DUPLICATE_RADIUS_METERS = 300; // 300 meters
+const SIMILARITY_THRESHOLD = 0.5; // 50% similarity
 
 /**
  * Simple string similarity check (Levenshtein distance simplified)
@@ -47,7 +47,7 @@ export const findDuplicate = (newIssue, existingIssues) => {
     const distance = getDistance(newIssue.lat, newIssue.lng, existing.lat, existing.lng);
     
     // Very close proximity + same category = strong duplicate signal
-    if (distance < 15 && newIssue.category === existing.category) return true;
+    if (distance < 50 && newIssue.category === existing.category) return true;
     
     if (distance > DUPLICATE_RADIUS_METERS) return false;
 
@@ -57,8 +57,10 @@ export const findDuplicate = (newIssue, existingIssues) => {
     }
 
     // 3. Check text similarity (Weighted by distance)
-    const similarity = stringSimilarity(newIssue.description.toLowerCase(), existing.description.toLowerCase());
-    const requiredSimilarity = distance < 25 ? 0.6 : SIMILARITY_THRESHOLD;
+    const desc1 = newIssue.description ? newIssue.description.toLowerCase() : '';
+    const desc2 = existing.description ? existing.description.toLowerCase() : '';
+    const similarity = stringSimilarity(desc1, desc2);
+    const requiredSimilarity = distance < 100 ? 0.35 : SIMILARITY_THRESHOLD;
     
     return similarity >= requiredSimilarity;
   });

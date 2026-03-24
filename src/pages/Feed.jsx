@@ -85,8 +85,15 @@ const IssueCard = ({ issue, onVote, userVote, issueComments, onAddComment, curre
               <h3 className="text-xl font-bold leading-tight group-hover:text-primary transition-colors truncate whitespace-normal line-clamp-2">
                 {t(issue.title)}
               </h3>
-              <div className="flex items-center text-sm text-muted-foreground mt-1 truncate">
-                <MapPin className="h-3.5 w-3.5 mr-1.5 shrink-0 text-primary/70" /> {t(issue.location)}
+              <div className="flex flex-col text-sm text-muted-foreground mt-1 w-full">
+                <div className="flex items-center truncate">
+                  <MapPin className="h-3.5 w-3.5 mr-1.5 shrink-0 text-primary/70" /> {t(issue.location)}
+                </div>
+                {issue.address && (
+                  <div className="mt-0.5 text-[13px] font-medium pl-5 break-words whitespace-normal line-clamp-2 italic opacity-90">
+                    📍 {issue.address}
+                  </div>
+                )}
               </div>
             </div>
             
