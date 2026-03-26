@@ -1,19 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useApp } from '@/context/AppContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { 
-  Activity, CheckCircle, Clock, AlertTriangle, FileText, Bell, MapPin, 
-  Tag, X, ChevronDown, ChevronUp, ShieldCheck, UserCheck, Send, Image as ImageIcon, ArrowRight
+import { Textarea } from '@/components/ui/Textarea';
+import { Label } from '@/components/ui/Label';
+import {
+  Activity, CheckCircle, Clock, AlertTriangle, FileText, MapPin,
+  Tag, ChevronDown, ChevronUp, ShieldCheck, UserCheck, ArrowRight, Sparkles, Gauge,
+  UserCog, Send
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiJson } from '@/lib/api';
 
 const StatCard = ({ title, value, icon: Icon, description, colorClass = "text-primary bg-primary/10" }) => (
-  <Card className="shadow-sm border-primary/10 transition-all hover:shadow-md">
+  <Card className="shadow-sm border-primary/10 transition-all hover:shadow-md bg-card/95 backdrop-blur-sm">
     <CardContent className="p-6">
       <div className="flex justify-between items-start">
         <div>
@@ -37,12 +40,89 @@ const progressColor = (progress) => {
   }
 };
 
-const IssueDetailRow = ({ issue, isAuthority = false, onAction }) => {
+const getAssignedId = (issue) => {
+  if (!issue) return null;
+  if (typeof issue.assignedTo === 'string') return issue.assignedTo;
+  if (issue.assignedTo && typeof issue.assignedTo === 'object') {
+    return issue.assignedTo.$oid || issue.assignedTo._id || issue.assignedTo.id || issue.assignedTo.toString?.();
+  }
+  return issue.assignedTo;
+};
+
+const getIssueReportImage = (issue) => issue?.img || issue?.image || issue?.imageUrl || issue?.proofImage || '';
+
+const getIssueCompletionImage = (issue) => issue?.completionImg || issue?.resolvedImage || '';
+
+const resolveImageSrc = (rawSrc = '') => {
+  const src = String(rawSrc || '').trim();
+  if (!src) return '';
+  if (src.startsWith('data:image/')) return src;
+  if (src.startsWith('http://') || src.startsWith('https://')) return src;
+  if (src.startsWith('/')) return src;
+  if (src.startsWith('blob:')) return src;
+  return `https://${src}`;
+};
+
+const EvidenceImage = ({ src, alt, className, hintClassName = 'text-xs text-muted-foreground' }) => {
+  const [failed, setFailed] = useState(false);
+  const normalizedSrc = resolveImageSrc(src);
+
+  if (!normalizedSrc) {
+    return <p className={hintClassName}>No image available.</p>;
+  }
+
+  if (failed) {
+    return (
+      <div className="space-y-1">
+        <p className={hintClassName}>Image preview unavailable.</p>
+        <a href={normalizedSrc} target="_blank" rel="noreferrer" className="text-xs text-primary underline">
+          Open image in new tab
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <a href={normalizedSrc} target="_blank" rel="noreferrer" className="block">
+      <img
+        src={normalizedSrc}
+        alt={alt}
+        className={className}
+        loading="lazy"
+        onError={() => setFailed(true)}
+      />
+    </a>
+  );
+};
+
+const IssueDetailRow = ({ issue, isAuthority = false, showEvidenceImages = true }) => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const { verifyIssue, resolveIssue } = useApp();
   const [expanded, setExpanded] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [showResolveForm, setShowResolveForm] = useState(false);
+  const [completionImg, setCompletionImg] = useState('');
+  const [completionFileName, setCompletionFileName] = useState('');
+  const [completionDescription, setCompletionDescription] = useState('');
+  const [resolveError, setResolveError] = useState('');
+
+  const handleCompletionFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setResolveError(t('Please select a valid image file.'));
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setCompletionImg(reader.result || '');
+      setCompletionFileName(file.name);
+      setResolveError('');
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleVerify = async (status) => {
     setSubmitting(true);
@@ -51,11 +131,18 @@ const IssueDetailRow = ({ issue, isAuthority = false, onAction }) => {
   };
 
   const handleResolve = async () => {
-    const imgUrl = prompt(t('Enter completion image URL (Simulation):'), 'https://images.unsplash.com/photo-1541698444083-023c97d3f4b6?auto=format&fit=crop&q=80&w=800');
-    if (!imgUrl) return;
+    if (!completionImg.trim() || !completionDescription.trim()) {
+      setResolveError(t('Please add both completion image and completion description.'));
+      return;
+    }
     setSubmitting(true);
-    await resolveIssue(issue.id, imgUrl);
+    setResolveError('');
+    await resolveIssue(issue.id, completionImg.trim(), completionDescription.trim());
     setSubmitting(false);
+    setShowResolveForm(false);
+    setCompletionImg('');
+    setCompletionFileName('');
+    setCompletionDescription('');
   };
 
   return (
@@ -65,7 +152,9 @@ const IssueDetailRow = ({ issue, isAuthority = false, onAction }) => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="hidden sm:flex h-12 w-12 rounded-xl bg-secondary items-center justify-center shrink-0 border border-border overflow-hidden">
-                {issue.img ? <img src={issue.img} className="object-cover h-full w-full" alt="" /> : <FileText className="h-5 w-5 text-muted-foreground" />}
+                {showEvidenceImages && getIssueReportImage(issue)
+                  ? <img src={resolveImageSrc(getIssueReportImage(issue))} className="object-contain h-full w-full bg-muted/30 p-1" alt="" />
+                  : <FileText className="h-5 w-5 text-muted-foreground" />}
               </div>
               <div>
                 <h4 className="font-semibold text-base mb-0.5">{t(issue.title)}</h4>
@@ -82,7 +171,9 @@ const IssueDetailRow = ({ issue, isAuthority = false, onAction }) => {
             </div>
             <div className="flex flex-row-reverse sm:flex-row items-center justify-end gap-3">
               <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold tracking-wider uppercase ${progressColor(issue.progress)}`}>
-                {t(issue.progress)}
+                {issue.progress === 'In Progress' && issue.assignedToName
+                  ? `${t('Assigned to')} ${issue.assignedToName}`
+                  : t(issue.progress)}
               </span>
               <Button variant="outline" size="sm" className="h-8 gap-1" onClick={() => setExpanded(!expanded)}>
                 {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -107,6 +198,7 @@ const IssueDetailRow = ({ issue, isAuthority = false, onAction }) => {
                             <p className="text-xs italic text-primary leading-tight">" {t(issue.prediction.reasoning)} "</p>
                          </div>
                        )}
+
                     </div>
                     <div className="bg-muted/30 rounded-xl p-3 space-y-2">
                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t('Meta Information')}</p>
@@ -117,6 +209,27 @@ const IssueDetailRow = ({ issue, isAuthority = false, onAction }) => {
                        </div>
                     </div>
                   </div>
+
+                  {issue.progress === 'Resolved' && (getIssueCompletionImage(issue) || issue.completionDescription) && (
+                    <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
+                        {t('Completion Update')}
+                      </p>
+                      {issue.completionDescription && (
+                        <p className="text-xs text-foreground">{t(issue.completionDescription)}</p>
+                      )}
+                      {getIssueCompletionImage(issue) && (
+                        <div>
+                          <EvidenceImage
+                            src={getIssueCompletionImage(issue)}
+                            alt={t('Completion evidence')}
+                            className="h-56 w-full max-w-2xl rounded-lg object-contain bg-muted/30 border border-emerald-500/30"
+                          />
+                          <span className="text-xs text-primary underline mt-1 inline-block">{t('View completion image')}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {issue.auditLogs && issue.auditLogs.length > 0 && (
                      <div className="mt-4 bg-muted/20 rounded-xl p-4 border border-border/40">
@@ -144,8 +257,8 @@ const IssueDetailRow = ({ issue, isAuthority = false, onAction }) => {
                   {/* Actions based on role and status */}
                   <div className="flex justify-end gap-2 pt-2">
                     {isAuthority && issue.progress === 'In Progress' && (
-                      <Button size="sm" className="bg-green-600 hover:bg-green-700 gap-2" onClick={handleResolve} disabled={submitting}>
-                        <CheckCircle className="w-4 h-4" /> {t('Mark as Fixed')}
+                      <Button size="sm" className="bg-green-600 hover:bg-green-700 gap-2" onClick={() => setShowResolveForm((v) => !v)} disabled={submitting}>
+                        <CheckCircle className="w-4 h-4" /> {showResolveForm ? t('Close Update Form') : t('Submit Completion')}
                       </Button>
                     )}
                     
@@ -157,6 +270,39 @@ const IssueDetailRow = ({ issue, isAuthority = false, onAction }) => {
                       </div>
                     )}
                   </div>
+
+                  {isAuthority && issue.progress === 'In Progress' && showResolveForm && (
+                    <div className="rounded-xl border border-green-500/30 bg-green-500/5 p-3 space-y-3">
+                      <p className="text-[11px] font-black uppercase tracking-widest text-green-700 dark:text-green-400">
+                        {t('Completion Proof Submission')}
+                      </p>
+                      <div className="space-y-1.5">
+                        <Label className="text-[11px] font-semibold">{t('Upload Completion Image')}</Label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleCompletionFileChange}
+                          className="w-full text-xs file:mr-3 file:rounded-md file:border file:border-input file:bg-background file:px-3 file:py-1.5 file:text-xs file:font-semibold"
+                        />
+                        {completionFileName && <p className="text-[11px] text-muted-foreground">{completionFileName}</p>}
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[11px] font-semibold">{t('Completion Description')}</Label>
+                        <Textarea
+                          className="min-h-[92px]"
+                          value={completionDescription}
+                          onChange={(e) => setCompletionDescription(e.target.value)}
+                          placeholder={t('Describe what was fixed, where, and when...')}
+                        />
+                      </div>
+                      {resolveError && <p className="text-xs text-red-600 font-medium">{resolveError}</p>}
+                      <div className="flex justify-end">
+                        <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={handleResolve} disabled={submitting}>
+                          {submitting ? t('Submitting...') : t('Mark as Fixed')}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -187,7 +333,7 @@ const UserDashboard = ({ issues, stats, user }) => {
           {userIssues.length === 0 ? (
             <div className="p-12 text-center border-2 border-dashed rounded-3xl bg-muted/10">
               <p className="text-muted-foreground font-medium">{t('You haven\'t started your civic journey yet.')}</p>
-              <Button variant="link" className="mt-2 text-primary uppercase text-xs font-bold tracking-widest">{t('Report Neighbor Issue')}</Button>
+              <Button variant="link" className="mt-2 text-primary text-xs font-semibold tracking-wide">{t('Report Neighbor Issue')}</Button>
             </div>
           ) : (
             userIssues.slice().reverse().map(issue => <IssueDetailRow key={issue.id} issue={issue} />)
@@ -200,7 +346,7 @@ const UserDashboard = ({ issues, stats, user }) => {
 
 const AuthorityDashboard = ({ issues, user }) => {
   const { t } = useLanguage();
-  const assignedIssues = issues.filter(i => i.assignedTo === user.id);
+  const assignedIssues = issues.filter((i) => String(getAssignedId(i)) === String(user.id));
 
   return (
     <div className="space-y-8">
@@ -216,6 +362,32 @@ const AuthorityDashboard = ({ issues, user }) => {
           {assignedIssues.length === 0 ? (
             <div className="p-12 text-center border-2 border-dashed rounded-3xl bg-muted/10 text-muted-foreground">{t('No active assignments.')}</div>
           ) : (
+            assignedIssues.map(issue => <IssueDetailRow key={issue.id} issue={issue} isAuthority={true} showEvidenceImages={false} />)
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const LowerAuthorityDashboard = ({ issues, user }) => {
+  const { t } = useLanguage();
+  const assignedIssues = issues.filter((i) => String(getAssignedId(i)) === String(user.id));
+
+  return (
+    <div className="space-y-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <StatCard title={t('Assigned to Me')} value={assignedIssues.length} icon={ShieldCheck} colorClass="text-indigo-600 bg-indigo-50" />
+        <StatCard title={t('Pending Work')} value={assignedIssues.filter(i => i.progress !== 'Resolved').length} icon={Clock} colorClass="text-amber-600 bg-amber-50" />
+        <StatCard title={t('Completed by Me')} value={assignedIssues.filter(i => i.progress === 'Resolved').length} icon={CheckCircle} colorClass="text-emerald-600 bg-emerald-50" />
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-xl font-bold tracking-tight">{t('Lower Authority Task Board')}</h3>
+        <div className="space-y-4">
+          {assignedIssues.length === 0 ? (
+            <div className="p-12 text-center border-2 border-dashed rounded-3xl bg-muted/10 text-muted-foreground">{t('No assigned issues right now.')}</div>
+          ) : (
             assignedIssues.map(issue => <IssueDetailRow key={issue.id} issue={issue} isAuthority={true} />)
           )}
         </div>
@@ -228,29 +400,91 @@ const AdminDashboard = ({ issues, stats }) => {
   const { t } = useLanguage();
   const { assignIssue } = useApp();
   const [authorities, setAuthorities] = useState([]);
+  const [reportFilter, setReportFilter] = useState('non-completed');
+  const [selectedIssueId, setSelectedIssueId] = useState('');
+  const [selectedAuthorityId, setSelectedAuthorityId] = useState('');
+  const [assignmentDeadline, setAssignmentDeadline] = useState('');
+  const [assignmentNote, setAssignmentNote] = useState('');
+  const [assignmentMode, setAssignmentMode] = useState('direct');
+  const [assigning, setAssigning] = useState(false);
+  const [panelError, setPanelError] = useState('');
 
   useEffect(() => {
-    // Simulated authority list fetching
-    setAuthorities([
-      { id: 'auth1', name: 'Zonal Engineer (South)' },
-      { id: 'auth2', name: 'Sanitation Officer' },
-      { id: 'auth3', name: 'PWD Supervisor' }
-    ]);
+    const fetchAuthorities = async () => {
+      try {
+        const data = await apiJson('/api/issues/authorities');
+        setAuthorities(data?.authorities || []);
+      } catch (e) {
+        console.error(e);
+        setPanelError(t('Could not load authority roster.'));
+      }
+    };
+    fetchAuthorities();
   }, []);
 
-  const handleAssign = async (issueId) => {
-    const authId = prompt('Enter Authority ID (auth1, auth2, auth3):', 'auth1');
-    if (!authId) return;
-    await assignIssue(issueId, authId);
+  const actionableIssues = useMemo(
+    () => issues
+      .filter((i) => i.progress !== 'Resolved')
+      .sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0)),
+    [issues]
+  );
+
+  const selectedIssue = useMemo(
+    () => actionableIssues.find((issue) => String(issue.id) === String(selectedIssueId)),
+    [actionableIssues, selectedIssueId]
+  );
+
+  const filteredAuthorities = useMemo(() => {
+    if (assignmentMode !== 'lower-delegation') return authorities;
+    return authorities.filter((a) => a.authorityLevel === 'L2' || a.authorityLevel === 'L3');
+  }, [authorities, assignmentMode]);
+
+  const selectedAuthority = useMemo(
+    () => filteredAuthorities.find((a) => String(a.id) === String(selectedAuthorityId)),
+    [filteredAuthorities, selectedAuthorityId]
+  );
+
+  const handleAssign = async () => {
+    if (!selectedIssueId || !selectedAuthorityId) {
+      setPanelError(t('Select both issue and authority before assigning.'));
+      return;
+    }
+    if (!assignmentDeadline) {
+      setPanelError(t('Deadline is required.'));
+      return;
+    }
+    try {
+      setAssigning(true);
+      setPanelError('');
+      const isoDate = new Date(assignmentDeadline).toISOString();
+      await assignIssue(selectedIssueId, selectedAuthorityId, isoDate, {
+        note: assignmentNote,
+        mode: assignmentMode,
+        authorityName: selectedAuthority?.name,
+      });
+      setAssignmentNote('');
+    } catch (e) {
+      setPanelError(e?.message || t('Assignment failed. Please try again.'));
+    } finally {
+      setAssigning(false);
+    }
   };
+
+  const visibleAdminIssues = useMemo(() => {
+    const byStatus = reportFilter === 'completed'
+      ? issues.filter((i) => i.progress === 'Resolved')
+      : issues.filter((i) => i.progress !== 'Resolved');
+    return byStatus
+      .filter((i) => i.priorityScore > 60 || i.prediction || i.progress === 'Resolved')
+      .sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0));
+  }, [issues, reportFilter]);
 
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title={t('Total Issues')} value={stats.totalIssues} icon={FileText} />
-        <StatCard title={t('Unresolved Critical')} value={stats.urgentIssues} icon={AlertTriangle} colorClass="text-red-600 bg-red-50" />
-        <StatCard title={t('Resolved')} value={stats.resolvedIssues} icon={CheckCircle} colorClass="text-emerald-600 bg-emerald-50" />
-        <StatCard title={t('Verify Wait')} value={stats.pendingVerification} icon={UserCheck} colorClass="text-amber-600 bg-amber-50" />
+        <StatCard title={t('Unresolved Issues')} value={Math.max((stats.totalIssues || 0) - (stats.resolvedIssues || 0), 0)} icon={AlertTriangle} colorClass="text-red-600 bg-red-50" />
+        <StatCard title={t('Solved Issues')} value={stats.resolvedIssues || 0} icon={CheckCircle} colorClass="text-emerald-600 bg-emerald-50" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
@@ -259,8 +493,24 @@ const AdminDashboard = ({ issues, stats }) => {
             {t('High-Priority Intelligence Feed')}
             <span className="text-[10px] bg-red-600 text-white px-2 py-1 rounded-full animate-pulse">{t('LIVE CONTROL')}</span>
           </h3>
+          <div className="inline-flex rounded-xl border border-border/60 bg-muted/20 p-1 gap-1">
+            <button
+              type="button"
+              onClick={() => setReportFilter('non-completed')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${reportFilter === 'non-completed' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
+            >
+              {t('Non-Completed Reports')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setReportFilter('completed')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${reportFilter === 'completed' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
+            >
+              {t('Completed Reports')}
+            </button>
+          </div>
           <div className="space-y-4">
-             {issues.filter(i => i.priorityScore > 60 || i.prediction).sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0)).map(issue => (
+             {visibleAdminIssues.map(issue => (
                <Card key={issue.id} className="shadow-antigravity border-l-4 border-l-red-500">
                   <CardContent className="p-5 flex flex-col md:flex-row justify-between gap-4">
                     <div className="space-y-1">
@@ -271,11 +521,40 @@ const AdminDashboard = ({ issues, stats }) => {
                       <h4 className="font-bold text-lg">{t(issue.title)}</h4>
                       <p className="text-xs text-muted-foreground flex items-center gap-1.5"><MapPin className="w-3 h-3" /> {t(issue.location)}</p>
                       {issue.address && <p className="text-[11px] text-muted-foreground mt-0.5 italic">📍 {issue.address}</p>}
+                      {getIssueReportImage(issue) && (
+                        <div className="block mt-3">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">{t('Report Image')}</p>
+                          <EvidenceImage
+                            src={getIssueReportImage(issue)}
+                            alt={t('Report evidence')}
+                            className="h-52 w-full max-w-xl rounded-lg object-contain bg-muted/30 border border-border/60"
+                          />
+                        </div>
+                      )}
+                      {getIssueCompletionImage(issue) && (
+                        <div className="block mt-3">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-400 mb-1">{t('Completion Image')}</p>
+                          <EvidenceImage
+                            src={getIssueCompletionImage(issue)}
+                            alt={t('Completion evidence')}
+                            className="h-52 w-full max-w-xl rounded-lg object-contain bg-muted/30 border border-emerald-500/30"
+                          />
+                        </div>
+                      )}
                       {issue.prediction && <p className="mt-3 text-xs bg-primary/5 p-3 rounded-xl border border-primary/10 text-primary font-medium italic">⚠️ {t(issue.prediction.message)}</p>}
                     </div>
                     <div className="flex flex-col gap-2 justify-center">
-                       <Button size="sm" className="h-9 font-bold bg-primary uppercase tracking-wider" onClick={() => handleAssign(issue.id)}>{t('Assign Authority')}</Button>
-                       <Button size="sm" variant="outline" className="h-9 font-bold uppercase tracking-wider">{t('Contact Reporter')}</Button>
+                        {issue.progress !== 'Resolved' ? (
+                          <Button
+                            size="sm"
+                            className="h-9 font-semibold bg-primary tracking-wide"
+                            onClick={() => setSelectedIssueId(String(issue.id))}
+                          >
+                            {t('Prepare Assignment')}
+                          </Button>
+                        ) : (
+                          <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">{t('Completed')}</span>
+                        )}
                     </div>
                   </CardContent>
                </Card>
@@ -284,26 +563,116 @@ const AdminDashboard = ({ issues, stats }) => {
         </div>
 
         <div className="space-y-6">
-           <h3 className="text-xl font-bold tracking-tight">{t('Platform Health')}</h3>
-           <Card className="shadow-antigravity overflow-hidden">
-             <CardHeader className="bg-muted/50 pb-4">
-               <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground">{t('Performance Metrics')}</CardTitle>
-             </CardHeader>
-             <CardContent className="p-6 space-y-6">
-                <div>
-                   <div className="flex justify-between text-xs font-bold mb-2"><span>{t('Avg Resolution Time')}</span><span className="text-primary">4.2 {t('Days')}</span></div>
-                   <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden"><div className="h-full bg-primary w-[65%]" /></div>
+          <h3 className="text-xl font-bold tracking-tight">{t('Assignment Command Panel')}</h3>
+
+          <Card className="shadow-antigravity overflow-hidden border-primary/30 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.16),transparent_44%),hsl(var(--card))]">
+            <CardHeader className="pb-4 border-b border-border/50">
+              <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                <UserCog className="w-4 h-4" />
+                {t('Authority Routing')}
+              </CardTitle>
+              <CardDescription>
+                {t('Assign reports to field teams, including lower-authority delegation when needed.')}
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="p-5 space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="issue-select">{t('Choose Report')}</Label>
+                <select
+                  id="issue-select"
+                  className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm"
+                  value={selectedIssueId}
+                  onChange={(e) => setSelectedIssueId(e.target.value)}
+                >
+                  <option value="">{t('Select issue')}</option>
+                  {actionableIssues.slice(0, 20).map((issue) => (
+                    <option key={issue.id} value={String(issue.id)}>
+                      #{issue.id} - {issue.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="assignment-mode">{t('Routing Mode')}</Label>
+                <select
+                  id="assignment-mode"
+                  className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm"
+                  value={assignmentMode}
+                  onChange={(e) => {
+                    setAssignmentMode(e.target.value);
+                    setSelectedAuthorityId('');
+                  }}
+                >
+                  <option value="direct">{t('Direct Assignment')}</option>
+                  <option value="lower-delegation">{t('Lower Authority Delegation')}</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="authority-select">{t('Assign To')}</Label>
+                <select
+                  id="authority-select"
+                  className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm"
+                  value={selectedAuthorityId}
+                  onChange={(e) => setSelectedAuthorityId(e.target.value)}
+                >
+                  <option value="">{t('Select authority')}</option>
+                  {filteredAuthorities.map((auth) => (
+                    <option key={auth.id} value={auth.id}>
+                        {auth.name} ({auth.role}, {auth.authorityLevel}, {auth.department}) - {auth.openIssues} open
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="deadline">{t('Deadline')} *</Label>
+                <Input
+                  id="deadline"
+                  type="date"
+                  value={assignmentDeadline}
+                  onChange={(e) => setAssignmentDeadline(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="assignment-note">{t('Instruction Note')}</Label>
+                <Textarea
+                  id="assignment-note"
+                  className="min-h-[88px]"
+                  value={assignmentNote}
+                  onChange={(e) => setAssignmentNote(e.target.value)}
+                  placeholder={t('Add execution notes, priority context, or escalation details...')}
+                />
+              </div>
+
+              {selectedIssue && (
+                <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 text-xs">
+                  <p className="font-semibold text-primary mb-1">{t('Selected Issue Snapshot')}</p>
+                  <p className="font-medium">#{selectedIssue.id} - {t(selectedIssue.title)}</p>
+                  <p className="text-muted-foreground mt-1">{t(selectedIssue.location)} • {t(selectedIssue.priorityLabel || 'Medium')}</p>
                 </div>
-                <div>
-                   <div className="flex justify-between text-xs font-bold mb-2"><span>{t('Community Satisfaction')}</span><span className="text-emerald-600">89%</span></div>
-                   <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden"><div className="h-full bg-emerald-500 w-[89%]" /></div>
+              )}
+
+              {selectedAuthority && (
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs">
+                  <p className="font-semibold text-emerald-700 dark:text-emerald-400 mb-1">{t('Selected Authority')}</p>
+                  <p className="font-medium">{selectedAuthority.name} ({selectedAuthority.authorityLevel})</p>
+                  <p className="text-muted-foreground mt-1">{selectedAuthority.department} • {selectedAuthority.designation} • {selectedAuthority.openIssues} {t('open reports')}</p>
                 </div>
-                <div>
-                   <div className="flex justify-between text-xs font-bold mb-2"><span>{t('AI Prediction Accuracy')}</span><span className="text-indigo-600">92%</span></div>
-                   <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden"><div className="h-full bg-indigo-500 w-[92%]" /></div>
-                </div>
-             </CardContent>
-           </Card>
+              )}
+
+              {panelError && <p className="text-xs text-red-600 font-medium">{panelError}</p>}
+
+              <Button className="w-full gap-2 h-10 font-semibold" onClick={handleAssign} disabled={assigning}>
+                <Send className="w-4 h-4" />
+                {assigning ? t('Assigning...') : t('Assign Report')}
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
@@ -312,10 +681,30 @@ const AdminDashboard = ({ issues, stats }) => {
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const { issues, notifications, isWithinRadius } = useApp();
+  const { issues, isWithinRadius } = useApp();
   const { t } = useLanguage();
   const [stats, setStats] = useState(null);
   const [userCoords, setUserCoords] = useState(null);
+  const isLowerAuthority = user?.role === 'authority' && ['L2', 'L3'].includes(user?.authorityLevel);
+
+  const buildFallbackStats = useMemo(() => {
+    if (!user) return null;
+
+    const userScopedIssues = issues.filter((i) => i.authorId === user.id);
+    const unresolved = issues.filter((i) => i.progress !== 'Resolved');
+
+    return {
+      // User dashboard shape
+      Reported: userScopedIssues.filter((i) => i.progress === 'Reported').length,
+      'In Progress': userScopedIssues.filter((i) => i.progress === 'In Progress').length,
+      Resolved: userScopedIssues.filter((i) => i.progress === 'Resolved').length,
+      // Admin dashboard shape
+      totalIssues: issues.length,
+      urgentIssues: unresolved.filter((i) => (i.priorityScore || 0) >= 70 || i.priorityLabel === 'Critical').length,
+      resolvedIssues: issues.filter((i) => i.progress === 'Resolved').length,
+      pendingVerification: issues.filter((i) => i.progress === 'Resolved' && (i.verificationStatus || 'Pending') === 'Pending').length,
+    };
+  }, [issues, user]);
 
   useEffect(() => {
     if ("geolocation" in navigator) {
@@ -330,51 +719,61 @@ const Dashboard = () => {
     ? issues.filter(i => isWithinRadius({ lat: i.lat, lng: i.lng }, userCoords, 5))
     : issues).sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0));
 
-  const unreadCount = notifications.filter(n => !n.read).length;
-
   useEffect(() => {
     const fetchStats = async () => {
       try {
         const url = user?.role === 'admin' ? '/api/dashboard/admin-stats' : '/api/dashboard/user-stats';
         const data = await apiJson(url);
-        setStats(data);
-      } catch (e) { console.error(e); }
+        setStats(data || buildFallbackStats);
+      } catch (e) {
+        console.error(e);
+        setStats(buildFallbackStats);
+      }
     };
     if (user) fetchStats();
-  }, [user]);
+  }, [user, buildFallbackStats]);
+
+  useEffect(() => {
+    if (!stats && buildFallbackStats) {
+      setStats(buildFallbackStats);
+    }
+  }, [stats, buildFallbackStats]);
 
   if (!stats) return <div className="min-h-screen flex items-center justify-center font-bold text-primary animate-pulse uppercase tracking-widest">{t('Initializing Intelligence...')}</div>;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-10 gap-6 border-b border-border/40 pb-8">
-        <div>
-          <h1 className="text-4xl lg:text-5xl font-black tracking-tight mb-2 uppercase italic flex items-center gap-3">
-             <span className="text-primary">City</span>Spark
-             <span className="text-2xl font-bold not-italic bg-secondary px-3 py-1 rounded-xl text-foreground">AI</span>
-          </h1>
-          <p className="text-muted-foreground text-lg italic font-medium">
-            {user?.role === 'admin' ? t('COMMAND CENTER: SYSTEM ADM-CORE ACTIVE') : 
-             user?.role === 'authority' ? t('AUTHORITY CONSOLE: MISSION READY') : 
-             t('Welcome to your CitySpark dashboard.')}
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-4">
-           <div className="hidden sm:flex flex-col items-end">
-             <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{t('Civic Standing')}</span>
-             <span className="text-lg font-black text-primary">{user?.points || 0} PTS</span>
-           </div>
-           <motion.div whileHover={{ scale: 1.02 }} className="flex items-center gap-3 bg-card px-5 py-3 rounded-2xl border border-primary/30 shadow-antigravity cursor-pointer">
-             <div className="relative"><Bell className="h-5 w-5 text-primary" />{unreadCount > 0 && <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-600 border-2 border-card"></span>}</div>
-             <div className="flex flex-col"><span className="text-sm font-black leading-none">{unreadCount} {t('Updates')}</span></div>
-           </motion.div>
+      <div className="rounded-3xl border border-border/60 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_42%),hsl(var(--card))] p-6 md:p-8 mb-10 shadow-sm">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-semibold text-primary mb-3">
+              <Sparkles className="w-3.5 h-3.5" />
+              {t('Operations Dashboard')}
+            </div>
+            <h1 className="text-3xl lg:text-4xl font-black tracking-tight mb-2">
+              <span className="text-primary">CitySpark</span>
+            </h1>
+            <p className="text-muted-foreground text-base md:text-lg font-medium max-w-2xl">
+              {user?.role === 'admin' ? t('System-wide monitoring, prioritization, and assignment console.') :
+               user?.role === 'authority' ? t('Track assigned tasks, progress work, and close issues efficiently.') :
+               t('Track your reports, monitor progress, and stay updated with civic activity.')}
+            </p>
+          </div>
+
+          {user?.role !== 'admin' && !isLowerAuthority && (
+            <div className="grid grid-cols-1 gap-3 w-full sm:w-auto">
+              <div className="rounded-2xl border border-border/60 bg-background/80 px-4 py-3">
+                <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1.5"><Gauge className="w-3.5 h-3.5" /> {t('Civic Standing')}</div>
+                <div className="text-xl font-black text-primary">{user?.points || 0} {t('PTS')}</div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="rounded-3xl border border-border/60 bg-card/70 backdrop-blur-sm p-4 md:p-6">
         {user?.role === 'admin' ? <AdminDashboard issues={issues} stats={stats} /> : 
-         user?.role === 'authority' ? <AuthorityDashboard issues={filteredIssues} user={user} /> : 
+          user?.role === 'authority' ? (isLowerAuthority ? <LowerAuthorityDashboard issues={filteredIssues} user={user} /> : <AuthorityDashboard issues={filteredIssues} user={user} />) : 
          <UserDashboard issues={filteredIssues} stats={stats} user={user} />}
       </motion.div>
     </div>

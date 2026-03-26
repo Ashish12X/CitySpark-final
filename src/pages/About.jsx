@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { motion } from 'framer-motion';
 import { useLanguage } from '@/context/LanguageContext';
 
@@ -19,7 +19,7 @@ const About = () => {
           </div>
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-6 leading-tight">{t('Pioneering the Digital Twin for Smarter Cities')}</h1>
           <p className="text-xl text-muted-foreground leading-relaxed">
-            {t('CitySpark AI was born out of a simple idea: that every citizen should have a direct, transparent, and AI-powered voice in their city\'s development.')}
+            {t('CitySpark was born out of a simple idea: that every citizen should have a direct, transparent, and AI-powered voice in their city\'s development.')}
           </p>
         </motion.div>
 
@@ -46,3 +46,4 @@ const About = () => {
   );
 };
 export default About;
+

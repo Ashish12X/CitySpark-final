@@ -1,6 +1,6 @@
-import React from 'react';
+﻿import React from 'react';
 import { Link } from 'react-router-dom';
-import { Github, Twitter, Linkedin } from 'lucide-react';
+import { Github, Twitter, Linkedin, Zap } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 
 const Footer = () => {
@@ -11,8 +11,8 @@ const Footer = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
           <div className="col-span-2 md:col-span-1">
             <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-xl shadow-antigravity">C</div>
-              <span className="text-xl font-bold tracking-tight">CitySpark <span className="text-primary">AI</span></span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-antigravity ring-1 ring-primary/25"><Zap className="h-4.5 w-4.5 fill-current" /></div>
+              <span className="text-xl font-bold tracking-tight">CitySpark</span>
             </Link>
             <p className="text-sm text-muted-foreground mb-6">{t('Bridging the communication gap between citizens and local government using predictive AI.')}</p>
             <div className="flex gap-4">
@@ -53,7 +53,7 @@ const Footer = () => {
           </div>
         </div>
         <div className="border-t border-border/50 pt-8 flex flex-col md:flex-row items-center justify-between text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} CitySpark AI Inc. {t('All rights reserved.')}</p>
+          <p>&copy; {new Date().getFullYear()} CitySpark Inc. {t('All rights reserved.')}</p>
           <p className="mt-2 md:mt-0">{t('Building smarter cities, one report at a time.')}</p>
         </div>
       </div>
@@ -62,3 +62,4 @@ const Footer = () => {
 };
 
 export default Footer;
+

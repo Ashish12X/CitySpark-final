@@ -8,27 +8,29 @@ import { translateWithGemini } from '@/services/GeminiService';
  */
 export const calculatePriorityScore = (issue, votes = {}) => {
   const { severity = 'Low', upvotes = 0, downvotes = 0, isHospitalArea = false, isRepeat = false } = issue;
-  
-  let score = 0;
-  
-  // 1. Severity Base Score (0-40)
-  const severityMap = { 'Low': 10, 'Medium': 25, 'High': 40, 'Critical': 40 };
-  score += severityMap[severity] || 10;
-  
-  // 2. Community Engagement (0-30)
-  const totalVotes = upvotes - downvotes;
-  const engagementScore = Math.min(Math.max(totalVotes * 2, 0), 30);
-  score += engagementScore;
-  
-  // 3. Location Importance (0-20)
-  if (isHospitalArea || issue.location?.toLowerCase().includes('hospital')) score += 20;
-  else if (issue.location?.toLowerCase().includes('school')) score += 15;
-  else if (issue.location?.toLowerCase().includes('market')) score += 10;
-  
-  // 4. Repeat Frequency (0-10)
-  if (isRepeat) score += 10;
-  
-  return Math.min(score, 100);
+
+  const severityMap = { Low: 25, Medium: 50, High: 75, Critical: 100 };
+  const severityScore = severityMap[severity] ?? 25;
+
+  let aiScore = severityScore;
+  if (isHospitalArea || issue.location?.toLowerCase().includes('hospital')) aiScore += 15;
+  else if (issue.location?.toLowerCase().includes('school')) aiScore += 10;
+  else if (issue.location?.toLowerCase().includes('market')) aiScore += 6;
+  if (isRepeat) aiScore += 10;
+  aiScore = Math.min(Math.max(aiScore, 0), 100);
+
+  // Community score: upvotes / totalVotes mapped to 0-100.
+  const resolvedVotes = Object.keys(votes || {}).length > 0
+    ? Object.values(votes)
+    : Array(upvotes).fill(1).concat(Array(downvotes).fill(-1));
+  const total = resolvedVotes.length;
+  const up = resolvedVotes.filter(v => v === 1).length;
+  const voteScore = total === 0
+    ? 0
+    : Math.round((up / total) * 100);
+
+  const weightedScore = Math.round(aiScore * 0.3 + voteScore * 0.7);
+  return Math.min(Math.max(weightedScore, 0), 100);
 };
 
 /**

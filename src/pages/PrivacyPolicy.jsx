@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { motion } from 'framer-motion';
 import { useLanguage } from '@/context/LanguageContext';
 
@@ -23,9 +23,10 @@ const PrivacyPolicy = () => {
         <p>{t('We use minimal local storage and cookies strictly to manage your preferences and active session.')}</p>
 
         <h2>{t('5. Contact Us')}</h2>
-        <p>{t('If you have questions about your privacy on CitySpark AI, reach out to us at')} <strong>privacy@cityspark.ai</strong>.</p>
+        <p>{t('If you have questions about your privacy on CitySpark, reach out to us at')} <strong>privacy@cityspark.com</strong>.</p>
       </motion.div>
     </div>
   );
 };
 export default PrivacyPolicy;
+

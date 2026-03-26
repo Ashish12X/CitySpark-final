@@ -1,9 +1,16 @@
 import { Router } from 'express';
 import { Issue } from '../models/Issue.js';
+import { User } from '../models/User.js';
 import { requireAuth } from '../middleware/auth.js';
 import * as AIService from '../services/AIService.js';
 
 const router = Router();
+
+const AUTHORITY_LEVEL_RANK = { L1: 1, L2: 2, L3: 3 };
+
+function getLevelRank(level) {
+  return AUTHORITY_LEVEL_RANK[level] ?? 2;
+}
 
 function applyVoteLogic(voteMap, userId, voteValue) {
   const uid = String(userId);
@@ -167,21 +174,109 @@ router.post('/:issueId/comments', requireAuth, async (req, res) => {
   }
 });
 
+router.get('/authorities', requireAuth, async (req, res) => {
+  try {
+    if (!['admin', 'authority'].includes(req.user.role)) {
+      return res.status(403).json({ error: 'Admin or authority access required' });
+    }
+
+    const authorities = await User.find({ role: 'authority' })
+      .select('_id name email department designation authorityLevel')
+      .lean();
+
+    const counts = await Issue.aggregate([
+      { $match: { assignedTo: { $exists: true, $ne: null }, progress: { $ne: 'Resolved' } } },
+      { $group: { _id: '$assignedTo', openIssues: { $sum: 1 } } },
+    ]);
+
+    const issueCountByAuthorityId = Object.fromEntries(
+      counts.map((entry) => [String(entry._id), entry.openIssues])
+    );
+
+    const list = authorities
+      .map((a) => ({
+        id: String(a._id),
+        name: a.name,
+        email: a.email,
+        role: 'authority',
+        department: a.department || 'General Administration',
+        designation: a.designation || 'Field Officer',
+        authorityLevel: a.authorityLevel || 'L2',
+        openIssues: issueCountByAuthorityId[String(a._id)] || 0,
+      }))
+      .sort((a, b) => {
+        const byLevel = getLevelRank(a.authorityLevel) - getLevelRank(b.authorityLevel);
+        if (byLevel !== 0) return byLevel;
+        return a.openIssues - b.openIssues;
+      });
+
+    res.json({ authorities: list });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 // Authority Assignment (Admin only)
 router.patch('/:issueId/assign', requireAuth, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
-    const { authorityId, deadline } = req.body;
-    
-    const issue = await Issue.findOneAndUpdate(
-      { id: Number(req.params.issueId) },
-      { 
-        assignedTo: authorityId, 
-        deadline: deadline || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        progress: 'In Progress'
+    if (!['admin', 'authority'].includes(req.user.role)) {
+      return res.status(403).json({ error: 'Admin or authority access required' });
+    }
+
+    const { authorityId, deadline, note, mode = 'direct' } = req.body;
+    if (!authorityId) return res.status(400).json({ error: 'authorityId is required' });
+
+    const issue = await Issue.findOne({ id: Number(req.params.issueId) });
+    if (!issue) return res.status(404).json({ error: 'Issue not found' });
+
+    const targetAuthority = await User.findOne({ _id: authorityId, role: 'authority' })
+      .select('_id name authorityLevel department')
+      .lean();
+    if (!targetAuthority) {
+      return res.status(400).json({ error: 'Target user is not a valid authority account' });
+    }
+
+    if (req.user.role === 'authority') {
+      const sourceAuthority = await User.findById(req.user.id)
+        .select('_id authorityLevel department')
+        .lean();
+      if (!sourceAuthority) {
+        return res.status(403).json({ error: 'Authority profile not found' });
+      }
+      const sourceRank = getLevelRank(sourceAuthority.authorityLevel);
+      const targetRank = getLevelRank(targetAuthority.authorityLevel);
+      if (targetRank <= sourceRank) {
+        return res.status(403).json({ error: 'Authorities can only delegate to lower levels' });
+      }
+      if (
+        sourceAuthority.department &&
+        targetAuthority.department &&
+        sourceAuthority.department !== targetAuthority.department
+      ) {
+        return res.status(403).json({ error: 'Cross-department delegation is not allowed for authorities' });
+      }
+    }
+
+    const now = new Date();
+    issue.assignedTo = authorityId;
+    issue.assignedToName = targetAuthority.name;
+    issue.assignedBy = req.user.id;
+    issue.assignmentMode = mode === 'lower-delegation' ? 'lower-delegation' : 'direct';
+    issue.assignmentNote = note?.trim() || '';
+    issue.deadline = deadline || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    issue.progress = 'In Progress';
+    issue.assignmentHistory = [
+      ...(Array.isArray(issue.assignmentHistory) ? issue.assignmentHistory : []),
+      {
+        assignedTo: authorityId,
+        assignedBy: req.user.id,
+        mode: issue.assignmentMode,
+        note: issue.assignmentNote,
+        at: now.toISOString(),
       },
-      { new: true }
-    );
+    ];
+    await issue.save();
+
     res.json(issue);
   } catch (e) {
     res.status(400).json({ error: e.message });
@@ -192,17 +287,27 @@ router.patch('/:issueId/assign', requireAuth, async (req, res) => {
 router.patch('/:issueId/resolve', requireAuth, async (req, res) => {
   try {
     if (req.user.role !== 'authority') return res.status(403).json({ error: 'Authority access required' });
-    const { completionImg } = req.body;
-    
-    const issue = await Issue.findOneAndUpdate(
-      { id: Number(req.params.issueId) },
-      { 
-        progress: 'Resolved',
-        completionImg,
-        verificationStatus: 'Pending'
-      },
-      { new: true }
-    );
+    const { completionImg, completionDescription } = req.body;
+    if (!completionImg?.trim()) {
+      return res.status(400).json({ error: 'Completion image is required' });
+    }
+    if (!completionDescription?.trim()) {
+      return res.status(400).json({ error: 'Completion description is required' });
+    }
+
+    const issue = await Issue.findOne({ id: Number(req.params.issueId) });
+    if (!issue) return res.status(404).json({ error: 'Issue not found' });
+    if (!issue.assignedTo || String(issue.assignedTo) !== String(req.user.id)) {
+      return res.status(403).json({ error: 'Only assigned authority can submit completion' });
+    }
+
+    issue.progress = 'Resolved';
+    issue.completionImg = completionImg.trim();
+    issue.completionDescription = completionDescription.trim();
+    issue.completedAt = new Date();
+    issue.verificationStatus = 'Pending';
+    await issue.save();
+
     res.json(issue);
   } catch (e) {
     res.status(400).json({ error: e.message });

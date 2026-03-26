@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+﻿import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -50,7 +50,7 @@ const Landing = () => {
         >
           <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary mb-8 shadow-sm">
             <span className="flex h-2 w-2 rounded-full bg-primary mr-2 animate-ping"></span>
-            {t('CitySpark AI is now live in public beta')}
+            {t('CitySpark is now live in public beta')}
           </div>
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 leading-[1.1]">
             {t('The Digital Twin for')} <br className="hidden md:block"/>
@@ -111,7 +111,7 @@ const Landing = () => {
           <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
             <div className="max-w-2xl">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">{t('Powerful tools for citizens')}</h2>
-              <p className="text-muted-foreground text-lg">{t('CitySpark AI empowers you to take charge of your civic environment while helping governments prioritize what matters most.')}</p>
+              <p className="text-muted-foreground text-lg">{t('CitySpark empowers you to take charge of your civic environment while helping governments prioritize what matters most.')}</p>
             </div>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -179,7 +179,7 @@ const Landing = () => {
       <section className="py-24 bg-card/40 border-b border-border/50">
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">{t('Why CitySpark AI?')}</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">{t('Why CitySpark?')}</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto text-lg">{t('Designed for both citizens and city officials to bridge the communication gap.')}</p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
@@ -218,3 +218,4 @@ const Landing = () => {
 };
 
 export default Landing;
+

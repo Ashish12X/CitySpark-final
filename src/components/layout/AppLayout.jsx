@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -7,7 +7,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { UI_LANGUAGES } from '@/context/translations';
 import { Button } from '@/components/ui/Button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/DropdownMenu';
-import { Bell, Map, List, User, Settings, LogOut, Moon, Sun, Eye, Briefcase, X, CheckCheck, Info, AlertCircle, CheckCircle2, Globe } from 'lucide-react';
+import { Bell, Map, List, User, Settings, LogOut, Moon, Sun, Eye, Briefcase, X, CheckCheck, Info, AlertCircle, CheckCircle2, Globe, LayoutDashboard, PlusCircle, Home, Circle, Zap } from 'lucide-react';
 import Footer from '@/components/layout/Footer';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -19,9 +19,33 @@ const NotificationIcon = ({ type }) => {
   }
 };
 
+const formatRelativeTime = (isoLike) => {
+  if (!isoLike) return 'Now';
+  const date = new Date(isoLike);
+  if (Number.isNaN(date.getTime())) return 'Now';
+  const diffMs = Date.now() - date.getTime();
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return 'Now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+};
+
 const NotificationPanel = ({ onClose }) => {
   const { notifications, markNotificationRead, markAllRead, clearNotification } = useApp();
   const { t } = useLanguage();
+  const unreadCount = notifications.filter((n) => !n.read).length;
+  const hasNotifications = notifications.length > 0;
+  const sortedNotifications = useMemo(
+    () => [...notifications].sort((a, b) => {
+      const aTime = new Date(a.createdAt || 0).getTime();
+      const bTime = new Date(b.createdAt || 0).getTime();
+      return bTime - aTime;
+    }),
+    [notifications]
+  );
 
   return (
     <motion.div
@@ -29,48 +53,61 @@ const NotificationPanel = ({ onClose }) => {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -8, scale: 0.97 }}
       transition={{ duration: 0.18 }}
-      className="absolute right-0 top-12 w-80 bg-card border border-border/60 rounded-2xl shadow-2xl z-50 overflow-hidden"
+      className="absolute right-0 top-12 w-[min(24rem,calc(100vw-1.5rem))] bg-card border border-border/60 rounded-2xl shadow-2xl z-50 overflow-hidden"
     >
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
-        <span className="font-semibold text-sm">{t('Notifications')}</span>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-muted/20">
+        <div>
+          <div className="font-semibold text-sm">{t('Notifications')}</div>
+          <div className="text-[11px] text-muted-foreground">
+            {unreadCount > 0 ? `${unreadCount} ${t('unread')}` : t('All caught up!')}
+          </div>
+        </div>
         <div className="flex items-center gap-2">
-          {notifications.some(n => !n.read) && (
+          {unreadCount > 0 && (
             <button
               onClick={markAllRead}
-              className="text-xs text-primary hover:underline flex items-center gap-1"
+              className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 rounded-md px-2 py-1 hover:bg-primary/10"
             >
               <CheckCheck className="w-3.5 h-3.5" /> {t('Mark all as read')}
             </button>
           )}
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground rounded-md p-1 hover:bg-muted" aria-label={t('Close notifications')}>
             <X className="w-4 h-4" />
           </button>
         </div>
       </div>
 
       <div className="max-h-80 overflow-y-auto divide-y divide-border/30">
-        {notifications.length === 0 ? (
+        {!hasNotifications ? (
           <div className="py-10 text-center text-sm text-muted-foreground">
-            🎉 {t('All caught up!')}
+            {t('All caught up!')}
           </div>
         ) : (
-          notifications.map(n => (
+          sortedNotifications.map((n) => (
             <div
               key={n.id}
-              className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer ${!n.read ? 'bg-primary/5' : ''}`}
-              onClick={() => markNotificationRead(n.id)}
+              className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/40 transition-colors ${!n.read ? 'bg-primary/5' : ''}`}
             >
               <NotificationIcon type={n.type} />
               <div className="flex-1 min-w-0">
                 <p className={`text-sm leading-snug ${!n.read ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
                   {t(n.message)}
                 </p>
+                <p className="text-[11px] text-muted-foreground mt-1">{formatRelativeTime(n.createdAt)}</p>
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                {!n.read && <span className="h-2 w-2 rounded-full bg-primary shrink-0" />}
+                {!n.read && (
+                  <button
+                    onClick={() => markNotificationRead(n.id)}
+                    className="text-[11px] text-primary hover:text-primary/80 px-2 py-1 rounded-md hover:bg-primary/10"
+                  >
+                    {t('Mark read')}
+                  </button>
+                )}
                 <button
-                  onClick={(e) => { e.stopPropagation(); clearNotification(n.id); }}
-                  className="text-muted-foreground hover:text-destructive transition-colors"
+                  onClick={() => clearNotification(n.id)}
+                  className="text-muted-foreground hover:text-destructive transition-colors rounded-md p-1 hover:bg-destructive/10"
+                  aria-label={t('Delete notification')}
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -80,7 +117,7 @@ const NotificationPanel = ({ onClose }) => {
         )}
       </div>
 
-      {notifications.length > 0 && (
+      {hasNotifications && (
         <div className="px-4 py-2 border-t border-border/40 text-center">
           <Link
             to="/dashboard"
@@ -117,32 +154,49 @@ const Navbar = () => {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  useEffect(() => {
+    const onEsc = (e) => {
+      if (e.key === 'Escape') setNotifOpen(false);
+    };
+    document.addEventListener('keydown', onEsc);
+    return () => document.removeEventListener('keydown', onEsc);
+  }, []);
+
   const handleLogout = () => {
     logout();
     navigate('/');
   };
 
   const navLinks = [
+      { name: t('Home'), path: '/home', icon: Home },
     { name: t('Feed'), path: '/feed', icon: List },
     { name: t('Map'), path: '/map', icon: Map },
     { name: t('Services'), path: '/services', icon: Briefcase },
   ];
 
+  const mobileLinks = [
+      { name: t('Home'), path: '/home', icon: Home },
+    { name: t('Feed'), path: '/feed', icon: List },
+    { name: t('Map'), path: '/map', icon: Map },
+    { name: t('Dashboard'), path: '/dashboard', icon: LayoutDashboard },
+    { name: t('Report'), path: '/report', icon: PlusCircle },
+  ];
+
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur-md">
+    <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/80 backdrop-blur-xl">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-6">
-          <Link to={user ? '/feed' : '/'} className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-xl shadow-antigravity">
-              C
+          <Link to={user ? '/home' : '/'} className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-xl shadow-antigravity ring-1 ring-primary/25">
+              <Zap className="h-4.5 w-4.5 fill-current" />
             </div>
             <span className="text-xl font-bold tracking-tight hidden sm:inline-block">
-              CitySpark <span className="text-primary tracking-tighter">AI</span>
+              CitySpark
             </span>
           </Link>
 
           {user && (
-            <nav className="hidden md:flex gap-1 items-center">
+            <nav className="hidden md:flex gap-1 items-center rounded-full border border-border/60 bg-card/80 p-1">
               {navLinks.map((link) => {
                 const Icon = link.icon;
                 const isActive = location.pathname === link.path;
@@ -150,15 +204,14 @@ const Navbar = () => {
                   <Link
                     key={link.path}
                     to={link.path}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive ? 'bg-secondary text-secondary-foreground' : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'}`}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-colors ${isActive ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-secondary/70 hover:text-foreground'}`}
                   >
                     <Icon className="h-4 w-4" />
                     {link.name}
                   </Link>
                 );
               })}
-              <div className="w-px h-6 bg-border mx-2"></div>
-              <Button asChild size="sm" className="rounded-full shadow-sm">
+              <Button asChild size="sm" className="rounded-full shadow-sm ml-1">
                 <Link to="/report">{t('Report Issue')}</Link>
               </Button>
             </nav>
@@ -207,14 +260,18 @@ const Navbar = () => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="relative h-9 w-9 rounded-full"
+                  className={`relative h-9 w-9 rounded-full border transition-colors ${notifOpen ? 'border-primary/40 bg-primary/10 text-primary' : 'border-transparent'}`}
                   onClick={() => setNotifOpen(prev => !prev)}
+                  aria-label={t('Notifications')}
                 >
                   <Bell className="h-4 w-4" />
                   {unread > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-destructive text-[9px] text-white font-bold flex items-center justify-center">
+                    <span className="absolute -top-1 -right-1 min-w-4 h-4 rounded-full bg-destructive text-[9px] text-white font-bold flex items-center justify-center px-1">
                       {unread > 9 ? '9+' : unread}
                     </span>
+                  )}
+                  {unread > 0 && (
+                    <Circle className="absolute bottom-1 right-1 h-1.5 w-1.5 fill-primary text-primary" />
                   )}
                 </Button>
 
@@ -272,15 +329,36 @@ const Navbar = () => {
           )}
         </div>
       </div>
+
+      {user && (
+        <div className="md:hidden border-t border-border/50 bg-card/90">
+          <div className="container mx-auto px-2 py-2 grid grid-cols-5 gap-1">
+            {mobileLinks.map((link) => {
+              const Icon = link.icon;
+              const active = location.pathname === link.path;
+              return (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  className={`flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[11px] font-medium transition-colors ${active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground'}`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="truncate">{link.name}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </header>
   );
 };
 
 const AppLayout = () => {
   return (
-    <div className="min-h-screen bg-background flex flex-col font-sans relative overflow-x-hidden w-full max-w-[100vw]">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.1),transparent_36%),radial-gradient(circle_at_top_right,hsl(var(--secondary-foreground)/0.06),transparent_30%),hsl(var(--background))] flex flex-col font-sans relative overflow-x-hidden w-full max-w-[100vw]">
       <Navbar />
-      <main className="flex-1 w-full max-w-7xl mx-auto flex flex-col">
+      <main className="flex-1 w-full max-w-7xl mx-auto flex flex-col pb-8">
         <Outlet />
       </main>
       <Footer />

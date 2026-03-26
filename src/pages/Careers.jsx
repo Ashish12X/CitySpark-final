@@ -50,7 +50,7 @@ const Careers = () => {
       </div>
       
       <div className="max-w-4xl mx-auto mt-16 text-center text-muted-foreground">
-        {t('Don\'t see a perfect fit? Send your resume anyway to')} <span className="text-primary font-medium">careers@cityspark.ai</span>
+        {t('Don\'t see a perfect fit? Send your resume anyway to')} <span className="text-primary font-medium">careers@cityspark.com</span>
       </div>
     </div>
   );

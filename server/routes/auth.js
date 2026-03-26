@@ -1,4 +1,4 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import rateLimit from 'express-rate-limit';
 import { User } from '../models/User.js';
@@ -25,6 +25,9 @@ function toPublicUser(doc) {
     email: doc.email,
     name: doc.name,
     role: doc.role,
+    department: doc.department,
+    designation: doc.designation,
+    authorityLevel: doc.authorityLevel,
     phone: doc.phone,
     address: doc.address,
     isVerified: doc.isVerified,
@@ -40,7 +43,7 @@ function issueToken(user) {
 router.post('/signup', loginSignupLimiter, async (req, res) => {
   console.log(`[AUTH] Signup attempt for: ${req.body.email}`);
   try {
-    const { name, email, password, phone, address } = req.body;
+    const { name, email, password, phone, address, zip, lat, lng } = req.body;
     if (!name?.trim() || !email?.trim() || !password) {
       return res.status(400).json({ error: 'Name, email and password are required' });
     }
@@ -67,6 +70,9 @@ router.post('/signup', loginSignupLimiter, async (req, res) => {
       passwordHash,
       phone,
       address,
+      zip,
+      lat,
+      lng,
       role: 'user',
     });
 
@@ -76,7 +82,7 @@ router.post('/signup', loginSignupLimiter, async (req, res) => {
       await Notification.create({
         userId: user._id.toString(),
         id: 1,
-        message: 'Welcome to CitySpark AI! Please verify your mobile number to start voting.',
+        message: 'Welcome to CitySpark! Please verify your mobile number to start voting.',
         type: 'info',
         read: false,
       });
@@ -162,3 +168,4 @@ router.get('/me', requireAuth, async (req, res) => {
 });
 
 export default router;
+

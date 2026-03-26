@@ -1,11 +1,11 @@
-import React from 'react';
+﻿import React from 'react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { BookOpen, Code, Database, Globe, Server, UserCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useLanguage } from '@/context/LanguageContext';
 
 const sectionKeys = [
-  { title: 'Getting Started', icon: BookOpen, desc: 'A comprehensive guide to setting up your CitySpark AI account and reporting your first issue.' },
+  { title: 'Getting Started', icon: BookOpen, desc: 'A comprehensive guide to setting up your CitySpark account and reporting your first issue.' },
   { title: 'API Reference', icon: Code, desc: 'Detailed documentation for our public APIs, including civic data and predictive maintenance endpoints.' },
   { title: 'Data Architecture', icon: Database, desc: 'Learn how we store, verify, and secure city-wide civic data while maintaining user privacy.' },
   { title: 'Account Verification', icon: UserCheck, desc: 'How to verify your identity as a citizen or government official to access advanced features.' },
@@ -19,7 +19,7 @@ const Documentation = () => {
     <div className="flex-1 py-20 px-4 min-h-screen bg-background">
       <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-4xl mx-auto w-full text-center mb-16">
         <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">{t('Documentation & Guides')}</h1>
-        <p className="text-xl text-muted-foreground">{t('Everything you need to know about using and integrating with the CitySpark AI platform.')}</p>
+        <p className="text-xl text-muted-foreground">{t('Everything you need to know about using and integrating with the CitySpark platform.')}</p>
       </motion.div>
 
       <div className="max-w-6xl mx-auto grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -46,3 +46,4 @@ const Documentation = () => {
   );
 };
 export default Documentation;
+

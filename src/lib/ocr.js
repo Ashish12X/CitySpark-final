@@ -36,47 +36,94 @@ export const parseAadhaar = async (file) => {
     const text = await extractTextFromImageOrPdf(file);
     console.log("OCR Result:", text);
     
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
-    const fullText = text.replace(/\n/g, ' ');
+    const lines = text
+      .split('\n')
+      .map(l => l.replace(/\s+/g, ' ').trim())
+      .filter(l => l.length > 1);
+    const fullText = text.replace(/\s+/g, ' ').trim();
     
     let name = '';
     let address = '';
     let pin = '';
     let phone = '';
 
-    // 1. PIN Code (6 digits in India)
-    const pinMatch = text.match(/\b\d{6}\b/);
-    if (pinMatch) pin = pinMatch[0];
+    const isNoiseLine = (line) => {
+      const lower = line.toLowerCase();
+      return (
+        lower.includes('government of india') ||
+        lower.includes('govt of india') ||
+        lower.includes('unique identification') ||
+        lower.includes('aadhaar') ||
+        lower.includes('enrolment') ||
+        lower.includes('vid') ||
+        lower.includes('help') ||
+        lower.includes('www.') ||
+        /^\d{4}\s\d{4}\s\d{4}$/.test(line)
+      );
+    };
 
-    // 2. Phone Number (10 digits starting with 6-9)
-    const phoneMatch = text.match(/\b[6-9]\d{9}\b/);
+    // 1. Phone Number (10 digits starting with 6-9)
+    const phoneMatch = fullText.match(/\b[6-9]\d{9}\b/);
     if (phoneMatch) phone = phoneMatch[0];
 
-    // 3. Address heuristics (Back side of Aadhaar)
-    // Matches "Address:", "C/O", "S/O", etc., and captures everything up to the 6 digit pincode.
-    const addrRegex = /(?:Address|Addres|Add|C\/O|S\/O|D\/O|W\/O)[\s:,-]*([\s\S]*?\b\d{6}\b)/i;
-    const addrMatch = fullText.match(addrRegex);
+    // 2. Address heuristics (Back side): prefer explicit "Address" block first.
+    const addrRegex = /(?:Address|Addres|Addr|Add)\s*[:,-]?\s*([\s\S]*?)(?:\b\d{6}\b|$)/i;
+    const addrMatch = text.match(addrRegex);
     
     if (addrMatch) {
-       address = addrMatch[1].trim();
+      address = addrMatch[1].replace(/\s+/g, ' ').replace(/^[,:\-\s]+/, '').trim();
     } else {
-       // Fallback: finding the pin line
-       const pinIndex = lines.findIndex(l => /\b\d{6}\b/.test(l));
-       if (pinIndex >= 1) {
-          address = lines.slice(Math.max(0, pinIndex - 2), pinIndex + 1).join(', ');
-       }
+      // Fallback: stitch likely address lines around relation markers and postcode line.
+      const addressLike = lines.filter((line) => {
+        const lower = line.toLowerCase();
+        return !isNoiseLine(line) && (
+          /\b(c\/o|s\/o|d\/o|w\/o)\b/i.test(line) ||
+          lower.includes('district') ||
+          lower.includes('state') ||
+          lower.includes('near') ||
+          lower.includes('road') ||
+          lower.includes('street') ||
+          lower.includes('nagar') ||
+          lower.includes('colony') ||
+          /\b\d{6}\b/.test(line)
+        );
+      });
+      address = addressLike.join(', ').replace(/\s+,/g, ',').trim();
     }
 
-    // 4. Name heuristics (Front side)
-    const dobIndex = lines.findIndex(l => l.toLowerCase().includes('dob') || l.toLowerCase().includes('year') || l.toLowerCase().includes('yob'));
-    if (dobIndex > 0) {
+    // 3. PIN Code (6 digits): prioritize a code found inside address block.
+    const pinMatchInAddress = address.match(/\b\d{6}\b/);
+    if (pinMatchInAddress) {
+      pin = pinMatchInAddress[0];
+    } else {
+      const pinLine = lines.find(l => /\b\d{6}\b/.test(l) && !/^\d{4}\s\d{4}\s\d{4}$/.test(l));
+      if (pinLine) {
+        const m = pinLine.match(/\b\d{6}\b/);
+        if (m) pin = m[0];
+      }
+    }
+
+    // Clean address and remove trailing pin duplication.
+    address = address
+      .replace(/\s+/g, ' ')
+      .replace(/\b\d{6}\b\s*$/, '')
+      .replace(/[,:\-\s]+$/, '')
+      .trim();
+
+    // 4. Name heuristics (Front side): prioritize line before DOB/YOB.
+    const dobIndex = lines.findIndex(l => /\b(dob|yob|year of birth|birth)\b/i.test(l));
+    if (dobIndex > 0 && !isNoiseLine(lines[dobIndex - 1])) {
       name = lines[dobIndex - 1];
     } else {
-      for (let i = 0; i < Math.min(6, lines.length); i++) {
+      for (let i = 0; i < Math.min(10, lines.length); i++) {
         const line = lines[i];
-        const lower = line.toLowerCase();
-        if (!lower.includes('govt') && !lower.includes('india') && !lower.includes('enrollment') && /^[A-Z][a-zA-Z\s.-]{3,}$/.test(line)) {
-          name = line;
+        if (
+          !isNoiseLine(line) &&
+          !/\d/.test(line) &&
+          !/\b(male|female|dob|yob|year|address)\b/i.test(line) &&
+          /^[A-Za-z][A-Za-z\s.-]{2,}$/.test(line)
+        ) {
+          name = line.replace(/^(name\s*[:\-]?\s*)/i, '').trim();
           break;
         }
       }

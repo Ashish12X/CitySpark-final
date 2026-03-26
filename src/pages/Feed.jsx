@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { ThumbsUp, ThumbsDown, MapPin, Tag, Clock, ArrowUpDown, Filter, Search, MessageSquare, MoreHorizontal, Plus, ChevronDown, Send, ShieldCheck, AlertTriangle, Zap, Activity } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, MapPin, Tag, Clock, ArrowUpDown, Search, MessageSquare, MoreHorizontal, Plus, ChevronDown, Send, Zap, Activity, Sparkles, Gauge, Users, Image as ImageIcon } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/DropdownMenu';
 import { SmartInput } from '@/components/ui/SmartInput';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -45,10 +45,17 @@ const PriorityBadge = ({ score, label }) => {
   );
 };
 
-const IssueCard = ({ issue, onVote, userVote, issueComments, onAddComment, currentUser }) => {
+const IssueCard = ({ issue, onVote, userVote, issueComments, onAddComment, currentUser, viewMode = 'horizontal' }) => {
   const { t } = useLanguage();
   const [isCommentsExpanded, setIsCommentsExpanded] = useState(false);
   const [newComment, setNewComment] = useState('');
+
+  const getDisplayTime = (value) => {
+    if (!value) return t('Recently');
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return t('Recently');
+    return date.toLocaleDateString();
+  };
 
   const handleCommentSubmit = (e) => {
     e.preventDefault();
@@ -61,16 +68,24 @@ const IssueCard = ({ issue, onVote, userVote, issueComments, onAddComment, curre
     setNewComment('');
   };
 
+  const isVertical = viewMode === 'vertical';
+
   return (
-    <Card className="mb-6 overflow-hidden border-border/50 bg-card hover:border-primary/30 hover:shadow-antigravity transition-all duration-300 group cursor-pointer">
-      <CardContent className="p-0 flex flex-col sm:flex-row h-full">
-        {issue.img && (
-          <div className="sm:w-[35%] h-56 sm:h-auto overflow-hidden relative shrink-0">
-            <img src={issue.img} alt={t(issue.title)} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent sm:hidden"></div>
-          </div>
-        )}
-        <div className="p-5 sm:p-6 flex-1 flex flex-col relative bg-gradient-to-br from-card to-card/50">
+    <Card className={`${isVertical ? 'mb-0 h-full' : 'mb-4'} overflow-hidden rounded-2xl border border-border/60 bg-card/95 hover:border-primary/35 hover:shadow-[0_10px_28px_hsl(var(--primary)/0.14)] transition-all duration-300 group`}>
+      <CardContent className={`p-0 flex h-full ${isVertical ? 'flex-col' : 'flex-col md:flex-row'}`}>
+        <div className={`${isVertical ? 'w-full h-44' : 'md:w-[230px] h-44 md:h-auto md:min-h-[228px]'} overflow-hidden relative shrink-0 bg-muted`}>
+          {issue.img ? (
+            <img src={issue.img} alt={t(issue.title)} className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-105" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-primary/15 via-card to-secondary/20 flex items-center justify-center">
+              <div className="h-14 w-14 rounded-2xl bg-background/90 border border-border/70 flex items-center justify-center">
+                <ImageIcon className="w-6 h-6 text-muted-foreground" />
+              </div>
+            </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent md:hidden"></div>
+        </div>
+        <div className={`p-4 sm:p-5 flex-1 flex flex-col relative bg-gradient-to-br from-card to-card/70 ${isVertical ? 'min-h-[250px]' : 'min-h-[228px]'}`}>
           <div className="flex justify-between items-start mb-3 gap-4">
             <div className="space-y-2.5 flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -80,65 +95,51 @@ const IssueCard = ({ issue, onVote, userVote, issueComments, onAddComment, curre
                   {t(issue.category)}
                 </span>
                 <PriorityBadge score={issue.priorityScore} label={issue.priorityLabel} />
-                <span className="text-xs text-muted-foreground flex items-center ml-auto sm:ml-0"><Clock className="h-3 w-3 mr-1"/> {t('2h ago')}</span>
+                <span className="text-xs text-muted-foreground flex items-center ml-auto sm:ml-0"><Clock className="h-3 w-3 mr-1"/> {getDisplayTime(issue.createdAt || issue.timestamp)}</span>
               </div>
-              <h3 className="text-xl font-bold leading-tight group-hover:text-primary transition-colors truncate whitespace-normal line-clamp-2">
+              <h3 className="text-xl font-extrabold leading-tight group-hover:text-primary transition-colors whitespace-normal line-clamp-2 tracking-tight">
                 {t(issue.title)}
               </h3>
               <div className="flex flex-col text-sm text-muted-foreground mt-1 w-full">
                 <div className="flex items-center truncate">
                   <MapPin className="h-3.5 w-3.5 mr-1.5 shrink-0 text-primary/70" /> {t(issue.location)}
                 </div>
-                {issue.address && (
-                  <div className="mt-0.5 text-[13px] font-medium pl-5 break-words whitespace-normal line-clamp-2 italic opacity-90">
-                    📍 {issue.address}
-                  </div>
-                )}
               </div>
             </div>
             
-            <div className="flex flex-col gap-1 items-end shrink-0" onClick={e => e.stopPropagation()}>
-                <div className="flex items-center bg-card border border-border/60 rounded-full shadow-sm p-1">
+            <div className="flex flex-col gap-2 items-end shrink-0" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center bg-background/90 border border-border/70 rounded-2xl shadow-sm p-1.5">
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className={`h-8 w-8 rounded-full ${userVote === 1 ? 'text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/20' : 'hover:bg-emerald-500/10 hover:text-emerald-600 text-muted-foreground'}`}
+                    className={`h-8 w-8 rounded-xl transition-all ${userVote === 1 ? 'text-emerald-700 bg-emerald-500/15 hover:bg-emerald-500/25' : 'hover:bg-emerald-500/10 hover:text-emerald-700 text-muted-foreground'}`}
                     onClick={(e) => { e.preventDefault(); onVote(1); }}
                   >
                     <ThumbsUp className={`h-4 w-4 ${userVote === 1 ? 'fill-current' : ''}`} />
                   </Button>
-                  <span className={`font-semibold px-2 min-w-[1.75rem] text-center text-sm ${userVote === 1 ? 'text-emerald-600' : 'text-foreground'}`}>
+                  <span className={`font-bold px-2.5 min-w-[2rem] text-center text-sm ${userVote === 1 ? 'text-emerald-700' : 'text-foreground'}`}>
                     {issue.upvotes !== undefined ? issue.upvotes : (issue.votes || 0)}
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5 pr-2 pt-1 opacity-60 hover:opacity-100 transition-opacity">
+                <div className="flex items-center bg-background/90 border border-border/70 rounded-xl px-1.5 py-1">
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className={`h-6 w-6 rounded-full ${userVote === -1 ? 'text-destructive bg-destructive/10 hover:bg-destructive/20' : 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive'}`}
+                    className={`h-8 w-8 rounded-lg transition-all ${userVote === -1 ? 'text-destructive bg-destructive/15 hover:bg-destructive/25' : 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive'}`}
                     onClick={(e) => { e.preventDefault(); onVote(-1); }}
                   >
-                    <ThumbsDown className={`h-3 w-3 ${userVote === -1 ? 'fill-current' : ''}`} />
+                    <ThumbsDown className={`h-4 w-4 ${userVote === -1 ? 'fill-current' : ''}`} />
                   </Button>
-                  <span className={`font-medium text-[11px] ${userVote === -1 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                  <span className={`font-semibold text-[11px] pr-1 ${userVote === -1 ? 'text-destructive' : 'text-muted-foreground'}`}>
                     {issue.downvotes || 0}
                   </span>
                 </div>
             </div>
           </div>
-          <p className="text-muted-foreground/90 line-clamp-2 text-sm leading-relaxed mb-4 mt-1">
+          <p className="text-muted-foreground/90 line-clamp-3 text-sm leading-relaxed mb-4 mt-1">
             {t(issue.description || "No description provided for this issue.")}
           </p>
-          
-          {issue.prediction && (
-             <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 mb-4 flex gap-3 items-start animate-pulse">
-               <Activity className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-               <div className="text-xs">
-                 <p className="font-bold text-primary mb-1">{t('AI Predictive Insight')}</p>
-                 <p className="text-muted-foreground leading-snug">{t(issue.prediction.message)}</p>
-               </div>
-             </div>
-          )}
+
           <div className="mt-auto pt-4 border-t border-border/50 flex flex-wrap items-center justify-between text-sm">
              <div className="flex items-center gap-5 text-muted-foreground font-medium">
                 <button 
@@ -218,11 +219,14 @@ const Feed = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
   const { isWithinRadius } = useApp();
+  const NEARBY_RADIUS_KM = 5;
   const [nearbyOnly, setNearbyOnly] = useState(true);
   const [filter, setFilter] = useState('All');
   const [sortBy, setSortBy] = useState('latest');
   const [authorFilter, setAuthorFilter] = useState('all');
   const [userCoords, setUserCoords] = useState(null);
+  const [searchText, setSearchText] = useState('');
+  const [viewMode, setViewMode] = useState('horizontal');
 
   React.useEffect(() => {
     if ("geolocation" in navigator) {
@@ -232,6 +236,8 @@ const Feed = () => {
       );
     }
   }, []);
+
+  const effectiveCoords = userCoords || ((user?.lat && user?.lng) ? { lat: user.lat, lng: user.lng } : null);
   
   const sortOptions = [
     { value: 'latest', label: t('Latest') },
@@ -239,14 +245,24 @@ const Feed = () => {
     { value: 'nearest', label: t('Nearest') }
   ];
 
-  const processedIssues = [...issues]
+  const processedIssues = useMemo(() => [...issues]
     .filter(i => {
-      if (nearbyOnly && userCoords) {
-        return isWithinRadius({ lat: i.lat, lng: i.lng }, userCoords, 5);
+      if (nearbyOnly && effectiveCoords) {
+        return isWithinRadius({ lat: i.lat, lng: i.lng }, effectiveCoords, NEARBY_RADIUS_KM);
       }
       return true;
     })
     .filter(i => filter === 'All' ? true : i.category === filter)
+    .filter(i => {
+      if (!searchText.trim()) return true;
+      const q = searchText.toLowerCase();
+      return (
+        (i.title || '').toLowerCase().includes(q) ||
+        (i.description || '').toLowerCase().includes(q) ||
+        (i.location || '').toLowerCase().includes(q) ||
+        (i.address || '').toLowerCase().includes(q)
+      );
+    })
     .filter(i => {
       if (authorFilter === 'mine') return i.authorId === user?.id;
       if (authorFilter === 'others') return i.authorId !== user?.id;
@@ -259,151 +275,206 @@ const Feed = () => {
         return bVotes - aVotes;
       }
       return (b.id - a.id);
-    });
+    }), [issues, nearbyOnly, effectiveCoords, isWithinRadius, filter, searchText, authorFilter, user?.id, sortBy]);
+
+  const myReportsCount = issues.filter((i) => i.authorId === user?.id).length;
+  const nearbyCount = effectiveCoords
+    ? issues.filter((i) => isWithinRadius({ lat: i.lat, lng: i.lng }, effectiveCoords, NEARBY_RADIUS_KM)).length
+    : issues.length;
 
   return (
-    <div className="min-h-screen bg-muted/20">
-      <div className="container mx-auto px-4 py-8 lg:py-12 max-w-5xl">
-        <div className="flex flex-col mb-10 gap-6">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-border/50 pb-6">
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-background via-card/50 to-background">
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-20 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl mix-blend-multiply opacity-35"></div>
+        <div className="absolute top-1/3 right-1/4 w-72 h-72 bg-secondary/20 rounded-full blur-3xl mix-blend-multiply opacity-25"></div>
+      </div>
+      <div className="container mx-auto px-4 py-8 lg:py-10 max-w-7xl relative z-10">
+        <section className="rounded-3xl border border-border/60 bg-[radial-gradient(circle_at_10%_20%,hsl(var(--primary)/0.17),transparent_36%),hsl(var(--card))] p-6 md:p-8 shadow-sm mb-6">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
             <div>
-              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-2">{t('Civic Issue Feed')}</h1>
-              <p className="text-muted-foreground text-lg">{t('Real-time reports from your community. Vote on issues to increase their priority.')}</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button asChild className="rounded-full shadow-sm font-semibold pl-3">
-                <Link to="/report">
-                  <Plus className="w-5 h-5 mr-1.5" /> {t('Report Issue')}
-                </Link>
-              </Button>
-            </div>
-          </div>
-          
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="flex gap-2 p-1 bg-card border border-border/60 rounded-xl overflow-x-auto w-full sm:w-auto shadow-sm no-scrollbar">
-              {[
-                { key: 'All', label: t('All') },
-                { key: 'Infrastructure', label: t('Infrastructure') },
-                { key: 'Electricity', label: t('Electricity') },
-                { key: 'Water', label: t('Water') },
-                { key: 'Sanitation', label: t('Sanitation') },
-              ].map(({ key, label }) => (
-                <button 
-                  key={key} 
-                  onClick={() => setFilter(key)}
-                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${filter === key ? 'bg-primary text-primary-foreground shadow' : 'hover:bg-muted text-muted-foreground'}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            
-            <div className="flex items-center gap-2">
-               <div className="flex gap-1 p-1 bg-secondary/50 rounded-xl border border-primary/20">
-                  <button onClick={() => setNearbyOnly(true)} className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${nearbyOnly ? 'bg-primary text-white shadow' : 'text-muted-foreground'}`}>
-                    📍 {t('NEARBY')}
-                  </button>
-                  <button onClick={() => setNearbyOnly(false)} className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${!nearbyOnly ? 'bg-primary text-white shadow' : 'text-muted-foreground'}`}>
-                    🌐 {t('GLOBAL')}
-                  </button>
-               </div>
-
-               <DropdownMenu>
-                 <DropdownMenuTrigger asChild>
-                   <Button variant="outline" className="rounded-xl border-border/60 shadow-sm font-medium bg-card">
-                     <ArrowUpDown className="w-4 h-4 mr-2 text-muted-foreground" /> 
-                     {t('Sort by:')} {sortOptions.find(o => o.value === sortBy)?.label}
-                     <ChevronDown className="w-4 h-4 ml-2 text-muted-foreground opacity-50" />
-                   </Button>
-                 </DropdownMenuTrigger>
-                 <DropdownMenuContent align="end" className="w-[180px] rounded-xl">
-                   {sortOptions.map(option => (
-                     <DropdownMenuItem 
-                       key={option.value} 
-                       onClick={() => setSortBy(option.value)}
-                       className={`cursor-pointer rounded-lg ${sortBy === option.value ? 'bg-primary/10 text-primary font-medium' : ''}`}
-                     >
-                       {option.label}
-                     </DropdownMenuItem>
-                   ))}
-                 </DropdownMenuContent>
-               </DropdownMenu>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground font-medium shrink-0">{t('Show:')}</span>
-            <div className="flex gap-2 p-1 bg-card border border-border/60 rounded-xl overflow-x-auto shadow-sm no-scrollbar">
-              {[
-                { value: 'all', label: t('All Reports') },
-                { value: 'mine', label: t('My Reports') },
-                { value: 'others', label: t('Others') },
-              ].map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={() => setAuthorFilter(opt.value)}
-                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
-                    authorFilter === opt.value
-                      ? 'bg-primary text-primary-foreground shadow'
-                      : 'hover:bg-muted text-muted-foreground'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-        
-        <div className="max-w-3xl mx-auto">
-          <AnimatePresence mode="popLayout">
-            {processedIssues.map((issue, idx) => (
-              <motion.div 
-                key={issue.id}
-                layout
-                initial={{ opacity: 0, y: 20, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
-                transition={{ duration: 0.4, delay: idx * 0.05, ease: [0.23, 1, 0.32, 1] }}
-              >
-                <IssueCard 
-                  issue={issue} 
-                  userVote={(votes || {})[issue.id]?.[user?.id] || 0}
-                  onVote={(val) => {
-                    if(user?.id) {
-                      voteIssue(issue.id, user.id, val, userCoords);
-                    } else {
-                      addNotification(t('logInToPulse'), 'info');
-                    }
-                  }} 
-                  issueComments={comments[issue.id] || []}
-                  onAddComment={addComment}
-                  currentUser={user}
-                />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-
-          {processedIssues.length === 0 && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-24 bg-card rounded-2xl border border-dashed border-border/60 shadow-sm flex flex-col items-center justify-center relative overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-primary/5 rounded-2xl"></div>
-              <div className="h-16 w-16 bg-muted rounded-2xl flex items-center justify-center mb-4 relative z-10 shadow-sm">
-                <Search className="h-8 w-8 text-muted-foreground opacity-50" />
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-semibold text-primary mb-3">
+                <Sparkles className="w-3.5 h-3.5" />
+                {t('Community Pulse')}
               </div>
-              <h3 className="text-xl font-bold text-foreground mb-2 relative z-10">{t('No issues reported yet')}</h3>
-              <p className="text-muted-foreground max-w-sm mx-auto mb-6 relative z-10">
-                {t('It looks quiet here! Be the first to report an issue in the')} <span className="text-foreground font-medium">{t(filter)}</span> {t('category.')}
-              </p>
-              <Button asChild className="relative z-10 shadow-antigravity rounded-full px-6">
-                <Link to="/report">{t('Report an Issue')} <Plus className="w-4 h-4 ml-2" /></Link>
-              </Button>
-            </motion.div>
-          )}
-        </div>
+              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-2">{t('Civic Issue Feed')}</h1>
+              <p className="text-muted-foreground text-base md:text-lg max-w-2xl">{t('Real-time reports from your community. Vote on issues to increase their priority.')}</p>
+            </div>
+            <Button asChild className="rounded-full shadow-sm font-semibold pl-3 bg-emerald-600 hover:bg-emerald-700 text-white">
+              <Link to="/report">
+                <Plus className="w-5 h-5 mr-1.5" /> {t('Report Issue')}
+              </Link>
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
+            <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 px-4 py-3">
+              <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1.5"><Gauge className="w-3.5 h-3.5" /> {t('Visible Issues')}</div>
+              <p className="text-2xl font-black tracking-tight">{processedIssues.length}</p>
+            </div>
+            <div className="rounded-2xl border border-purple-500/30 bg-purple-500/10 px-4 py-3">
+              <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> {t('My Reports')}</div>
+              <p className="text-2xl font-black tracking-tight">{myReportsCount}</p>
+            </div>
+            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
+              <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> {t(`Nearby (${NEARBY_RADIUS_KM}km)`)}</div>
+              <p className="text-2xl font-black tracking-tight">{nearbyCount}</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="space-y-6">
+          <div className="rounded-2xl border border-border/60 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.12),transparent_45%),hsl(var(--card)/0.85)] backdrop-blur-md p-4 shadow-sm space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_240px_220px] gap-3">
+              <div className="relative">
+                <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <SmartInput
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  onVoiceUpdate={(text) => setSearchText(prev => (prev ? `${prev} ${text}` : text))}
+                  placeholder={t('Search by issue, location, or address...')}
+                  className="pl-9 rounded-xl"
+                />
+              </div>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between rounded-xl border-border/60 shadow-sm font-medium bg-background">
+                    <span className="inline-flex items-center"><ArrowUpDown className="w-4 h-4 mr-2 text-muted-foreground" />{sortOptions.find(o => o.value === sortBy)?.label}</span>
+                    <ChevronDown className="w-4 h-4 ml-2 text-muted-foreground opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-[220px] rounded-xl">
+                  {sortOptions.map(option => (
+                    <DropdownMenuItem
+                      key={option.value}
+                      onClick={() => setSortBy(option.value)}
+                      className={`cursor-pointer rounded-lg ${sortBy === option.value ? 'bg-primary/10 text-primary font-medium' : ''}`}
+                    >
+                      {option.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <div className="flex gap-1 p-1 bg-secondary/50 rounded-xl border border-primary/20">
+                <button onClick={() => setNearbyOnly(true)} className={`flex-1 px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all ${nearbyOnly ? 'bg-primary text-white shadow' : 'text-muted-foreground'}`}>
+                  📍 {t('NEARBY')}
+                </button>
+                <button onClick={() => setNearbyOnly(false)} className={`flex-1 px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all ${!nearbyOnly ? 'bg-primary text-white shadow' : 'text-muted-foreground'}`}>
+                  🌐 {t('GLOBAL')}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col xl:flex-row gap-3 xl:items-center xl:justify-between">
+              <div>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { key: 'All', label: t('All') },
+                    { key: 'Infrastructure', label: t('Infrastructure') },
+                    { key: 'Electricity', label: t('Electricity') },
+                    { key: 'Water', label: t('Water') },
+                    { key: 'Sanitation', label: t('Sanitation') },
+                  ].map(({ key, label }) => (
+                    <button
+                      key={key}
+                      onClick={() => setFilter(key)}
+                      className={`px-4 py-2 rounded-xl text-sm font-medium text-left transition-all ${filter === key ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-background hover:bg-muted text-muted-foreground hover:text-foreground'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { value: 'all', label: t('All Reports') },
+                    { value: 'mine', label: t('My Reports') },
+                    { value: 'others', label: t('Others') },
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setAuthorFilter(opt.value)}
+                      className={`px-4 py-2 rounded-xl text-sm font-medium text-left transition-all ${authorFilter === opt.value ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-background hover:bg-muted text-muted-foreground hover:text-foreground'}`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setViewMode('horizontal')}
+                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${viewMode === 'horizontal' ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-background hover:bg-muted text-muted-foreground hover:text-foreground'}`}
+                  >
+                    {t('Horizontal')}
+                  </button>
+                  <button
+                    onClick={() => setViewMode('vertical')}
+                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${viewMode === 'vertical' ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-background hover:bg-muted text-muted-foreground hover:text-foreground'}`}
+                  >
+                    {t('Vertical')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className={viewMode === 'vertical' ? 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4' : ''}>
+            <AnimatePresence mode="popLayout">
+              {processedIssues.map((issue, idx) => (
+                <motion.div
+                  key={issue.id}
+                  layout
+                  initial={{ opacity: 0, y: 20, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+                  transition={{ duration: 0.35, delay: idx * 0.03, ease: [0.23, 1, 0.32, 1] }}
+                >
+                  <IssueCard
+                    issue={issue}
+                    viewMode={viewMode}
+                    userVote={(votes || {})[issue.id]?.[user?.id] || 0}
+                    onVote={(val) => {
+                      if (user?.id) {
+                        voteIssue(issue.id, user.id, val, effectiveCoords);
+                      } else {
+                        addNotification(t('logInToPulse'), 'info');
+                      }
+                    }}
+                    issueComments={comments[issue.id] || []}
+                    onAddComment={addComment}
+                    currentUser={user}
+                  />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+
+            {processedIssues.length === 0 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center py-24 bg-card rounded-2xl border border-dashed border-border/60 shadow-sm flex flex-col items-center justify-center relative overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-primary/5 rounded-2xl"></div>
+                <div className="h-16 w-16 bg-muted rounded-2xl flex items-center justify-center mb-4 relative z-10 shadow-sm">
+                  <Search className="h-8 w-8 text-muted-foreground opacity-50" />
+                </div>
+                <h3 className="text-xl font-bold text-foreground mb-2 relative z-10">{t('No issues reported yet')}</h3>
+                <p className="text-muted-foreground max-w-sm mx-auto mb-6 relative z-10">
+                  {t('It looks quiet here! Be the first to report an issue in the')} <span className="text-foreground font-medium">{t(filter)}</span> {t('category.')}
+                </p>
+                <Button asChild className="relative z-10 shadow-antigravity rounded-full px-6">
+                  <Link to="/report">{t('Report an Issue')} <Plus className="w-4 h-4 ml-2" /></Link>
+                </Button>
+              </motion.div>
+            )}
+          </div>
+        </section>
       </div>
     </div>
   );

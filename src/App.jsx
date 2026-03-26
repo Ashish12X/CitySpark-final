@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import Landing from '@/pages/Landing';
+import Home from '@/pages/Home';
 import Auth from '@/pages/Auth';
 import Feed from '@/pages/Feed';
 import MapView from '@/pages/MapView';
@@ -33,9 +34,9 @@ const App = () => {
     <BrowserRouter>
       <Routes>
         <Route element={<AppLayout />}>
-          <Route path="/" element={user ? <Navigate to="/feed" /> : <Landing />} />
-          <Route path="/login" element={user ? <Navigate to="/feed" /> : <Auth isLogin={true} />} />
-          <Route path="/signup" element={user ? <Navigate to="/feed" /> : <Auth isLogin={false} />} />
+          <Route path="/" element={user ? <Navigate to="/home" /> : <Landing />} />
+          <Route path="/login" element={user ? <Navigate to="/home" /> : <Auth isLogin={true} />} />
+          <Route path="/signup" element={user ? <Navigate to="/home" /> : <Auth isLogin={false} />} />
           
           {/* Informational Pages */}
           <Route path="/help" element={<HelpCenter />} />
@@ -48,9 +49,11 @@ const App = () => {
           <Route path="/docs" element={<Documentation />} />
 
           {/* Protected Routes */}
+          <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
           <Route path="/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
           <Route path="/map" element={<ProtectedRoute><MapView /></ProtectedRoute>} />
-          <Route path="/services" element={<ProtectedRoute><AICivicAssistant /></ProtectedRoute>} />
+          <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
+          <Route path="/assistant" element={<ProtectedRoute><AICivicAssistant /></ProtectedRoute>} />
           <Route path="/report" element={<ProtectedRoute><ReportIssue /></ProtectedRoute>} />
           <Route path="/schemes" element={<ProtectedRoute><Services /></ProtectedRoute>} />
           <Route path="/guidance" element={<ProtectedRoute><AICivicAssistant /></ProtectedRoute>} />

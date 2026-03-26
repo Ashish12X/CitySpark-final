@@ -251,7 +251,7 @@ const Profile = () => {
                <div className="flex items-start gap-2 text-xs text-muted-foreground p-3 rounded-lg bg-background border border-border/50 shadow-sm">
                   <Globe className="w-4 h-4 shrink-0 text-primary mt-0.5" />
                   <p className="leading-relaxed">
-                    {t('To change your location, contact support:')} <a href="mailto:support@cityspark.ai" className="text-primary hover:underline font-bold ml-1">support@cityspark.ai</a>
+                    {t('To change your location, contact support:')} <a href="mailto:support@cityspark.com" className="text-primary hover:underline font-bold ml-1">support@cityspark.com</a>
                   </p>
                </div>
             </CardContent>

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useLayoutEffect, useState, useCallback, useRef } from 'react';
+﻿import React, { createContext, useContext, useEffect, useLayoutEffect, useState, useCallback, useRef } from 'react';
 import { apiHealth, apiJson } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { findDuplicate } from '@/services/DuplicateService';
@@ -13,27 +13,27 @@ const MOCK_ISSUES = [
     id: 1,
     title: 'Pothole on Main St',
     titles: {
-      hi: 'मेन स्ट्रीट पर गड्ढा',
-      mr: 'मेन स्ट्रीटवर खड्डा',
-      bn: 'মেইন স্ট্রিটে গর্ত',
-      ta: 'மெயின் ஸ்ட்ரீட்டில் குழி',
-      te: 'మెయిన్ స్ట్రీట్‌లో గుంత',
-      gu: 'મેઈન સ્ટ્રીટ પર ખાડો',
-      kn: 'ಮೇಯಿನ್ ಸ್ಟ್ರೀಟ್‌ನಲ್ಲಿ ಗುಂಡಿ',
-      pa: 'ਮੇਨ ਸਟਰੀਟ ਤੇ ਟੋਆ',
-      ur: 'مین سٹریٹ پر گڑھا',
+      hi: 'à¤®à¥‡à¤¨ à¤¸à¥à¤Ÿà¥à¤°à¥€à¤Ÿ à¤ªà¤° à¤—à¤¡à¥à¤¢à¤¾',
+      mr: 'à¤®à¥‡à¤¨ à¤¸à¥à¤Ÿà¥à¤°à¥€à¤Ÿà¤µà¤° à¤–à¤¡à¥à¤¡à¤¾',
+      bn: 'à¦®à§‡à¦‡à¦¨ à¦¸à§à¦Ÿà§à¦°à¦¿à¦Ÿà§‡ à¦—à¦°à§à¦¤',
+      ta: 'à®®à¯†à®¯à®¿à®©à¯ à®¸à¯à®Ÿà¯à®°à¯€à®Ÿà¯à®Ÿà®¿à®²à¯ à®•à¯à®´à®¿',
+      te: 'à°®à±†à°¯à°¿à°¨à± à°¸à±à°Ÿà±à°°à±€à°Ÿà±â€Œà°²à±‹ à°—à±à°‚à°¤',
+      gu: 'àª®à«‡àªˆàª¨ àª¸à«àªŸà«àª°à«€àªŸ àªªàª° àª–àª¾àª¡à«‹',
+      kn: 'à²®à³‡à²¯à²¿à²¨à³ à²¸à³à²Ÿà³à²°à³€à²Ÿà³â€Œà²¨à²²à³à²²à²¿ à²—à³à²‚à²¡à²¿',
+      pa: 'à¨®à©‡à¨¨ à¨¸à¨Ÿà¨°à©€à¨Ÿ à¨¤à©‡ à¨Ÿà©‹à¨†',
+      ur: 'Ù…ÛŒÙ† Ø³Ù¹Ø±ÛŒÙ¹ Ù¾Ø± Ú¯Ú‘Ú¾Ø§',
     },
     description: 'A large pothole has formed on the main street causing damage to vehicles.',
     descriptions: {
-      hi: 'मुख्य सड़क पर एक बड़ा गड्ढा बन गया है जिससे वाहनों को नुकसान हो रहा है।',
-      mr: 'मुख्य रस्त्यावर एक मोठा खड्डा तयार झाला आहे ज्यामुळे वाहनांना नुकसान होत आहे।',
-      bn: 'প্রধান রাস্তায় একটি বড় গর্ত তৈরি হয়েছে যা যানবাহনের ক্ষতি করছে।',
-      ta: 'முக்கிய சாலையில் ஒரு பெரிய குழி உருவாகியுள்ளது, வாகனங்களுக்கு சேதம் ஏற்படுகிறது.',
-      te: 'ప్రధాన రోడ్డులో పెద్ద గుంత ఏర్పడింది, వాహనాలకు నష్టం కలుగుతోంది.',
-      gu: 'મુખ્ય રસ્તા પર એક મોટો ખાડો પડ્યો છે જે વાહનોને નુકસાન કરી રહ્યો છે.',
-      kn: 'ಮುಖ್ಯ ರಸ್ತೆಯಲ್ಲಿ ದೊಡ್ಡ ಗುಂಡಿ ಬಿದ್ದಿದ್ದು ವಾಹನಗಳಿಗೆ ಹಾನಿ ಉಂಟಾಗುತ್ತಿದೆ.',
-      pa: 'ਮੁੱਖ ਸੜਕ ਤੇ ਇੱਕ ਵੱਡਾ ਟੋਆ ਬਣ ਗਿਆ ਹੈ ਜੋ ਵਾਹਨਾਂ ਨੂੰ ਨੁਕਸਾਨ ਪਹੁੰਚਾ ਰਿਹਾ ਹੈ।',
-      ur: 'مین سٹریٹ پر ఒక بڑا گڑھا بن گیا ہے ਜੋ گاڑیوں کو نقصان پہنچਾ رہا ہے۔',
+      hi: 'à¤®à¥à¤–à¥à¤¯ à¤¸à¤¡à¤¼à¤• à¤ªà¤° à¤à¤• à¤¬à¤¡à¤¼à¤¾ à¤—à¤¡à¥à¤¢à¤¾ à¤¬à¤¨ à¤—à¤¯à¤¾ à¤¹à¥ˆ à¤œà¤¿à¤¸à¤¸à¥‡ à¤µà¤¾à¤¹à¤¨à¥‹à¤‚ à¤•à¥‹ à¤¨à¥à¤•à¤¸à¤¾à¤¨ à¤¹à¥‹ à¤°à¤¹à¤¾ à¤¹à¥ˆà¥¤',
+      mr: 'à¤®à¥à¤–à¥à¤¯ à¤°à¤¸à¥à¤¤à¥à¤¯à¤¾à¤µà¤° à¤à¤• à¤®à¥‹à¤ à¤¾ à¤–à¤¡à¥à¤¡à¤¾ à¤¤à¤¯à¤¾à¤° à¤à¤¾à¤²à¤¾ à¤†à¤¹à¥‡ à¤œà¥à¤¯à¤¾à¤®à¥à¤³à¥‡ à¤µà¤¾à¤¹à¤¨à¤¾à¤‚à¤¨à¤¾ à¤¨à¥à¤•à¤¸à¤¾à¤¨ à¤¹à¥‹à¤¤ à¤†à¤¹à¥‡à¥¤',
+      bn: 'à¦ªà§à¦°à¦§à¦¾à¦¨ à¦°à¦¾à¦¸à§à¦¤à¦¾à¦¯à¦¼ à¦à¦•à¦Ÿà¦¿ à¦¬à¦¡à¦¼ à¦—à¦°à§à¦¤ à¦¤à§ˆà¦°à¦¿ à¦¹à¦¯à¦¼à§‡à¦›à§‡ à¦¯à¦¾ à¦¯à¦¾à¦¨à¦¬à¦¾à¦¹à¦¨à§‡à¦° à¦•à§à¦·à¦¤à¦¿ à¦•à¦°à¦›à§‡à¥¤',
+      ta: 'à®®à¯à®•à¯à®•à®¿à®¯ à®šà®¾à®²à¯ˆà®¯à®¿à®²à¯ à®’à®°à¯ à®ªà¯†à®°à®¿à®¯ à®•à¯à®´à®¿ à®‰à®°à¯à®µà®¾à®•à®¿à®¯à¯à®³à¯à®³à®¤à¯, à®µà®¾à®•à®©à®™à¯à®•à®³à¯à®•à¯à®•à¯ à®šà¯‡à®¤à®®à¯ à®à®±à¯à®ªà®Ÿà¯à®•à®¿à®±à®¤à¯.',
+      te: 'à°ªà±à°°à°§à°¾à°¨ à°°à±‹à°¡à±à°¡à±à°²à±‹ à°ªà±†à°¦à±à°¦ à°—à±à°‚à°¤ à°à°°à±à°ªà°¡à°¿à°‚à°¦à°¿, à°µà°¾à°¹à°¨à°¾à°²à°•à± à°¨à°·à±à°Ÿà°‚ à°•à°²à±à°—à±à°¤à±‹à°‚à°¦à°¿.',
+      gu: 'àª®à«àª–à«àª¯ àª°àª¸à«àª¤àª¾ àªªàª° àªàª• àª®à«‹àªŸà«‹ àª–àª¾àª¡à«‹ àªªàª¡à«àª¯à«‹ àª›à«‡ àªœà«‡ àªµàª¾àª¹àª¨à«‹àª¨à«‡ àª¨à«àª•àª¸àª¾àª¨ àª•àª°à«€ àª°àª¹à«àª¯à«‹ àª›à«‡.',
+      kn: 'à²®à³à²–à³à²¯ à²°à²¸à³à²¤à³†à²¯à²²à³à²²à²¿ à²¦à³Šà²¡à³à²¡ à²—à³à²‚à²¡à²¿ à²¬à²¿à²¦à³à²¦à²¿à²¦à³à²¦à³ à²µà²¾à²¹à²¨à²—à²³à²¿à²—à³† à²¹à²¾à²¨à²¿ à²‰à²‚à²Ÿà²¾à²—à³à²¤à³à²¤à²¿à²¦à³†.',
+      pa: 'à¨®à©à©±à¨– à¨¸à©œà¨• à¨¤à©‡ à¨‡à©±à¨• à¨µà©±à¨¡à¨¾ à¨Ÿà©‹à¨† à¨¬à¨£ à¨—à¨¿à¨† à¨¹à©ˆ à¨œà©‹ à¨µà¨¾à¨¹à¨¨à¨¾à¨‚ à¨¨à©‚à©° à¨¨à©à¨•à¨¸à¨¾à¨¨ à¨ªà¨¹à©à©°à¨šà¨¾ à¨°à¨¿à¨¹à¨¾ à¨¹à©ˆà¥¤',
+      ur: 'Ù…ÛŒÙ† Ø³Ù¹Ø±ÛŒÙ¹ Ù¾Ø± à°’à°• Ø¨Ú‘Ø§ Ú¯Ú‘Ú¾Ø§ Ø¨Ù† Ú¯ÛŒØ§ ÛÛ’ à¨œà©‹ Ú¯Ø§Ú‘ÛŒÙˆÚº Ú©Ùˆ Ù†Ù‚ØµØ§Ù† Ù¾ÛÙ†Ú†à¨¾ Ø±ÛØ§ ÛÛ’Û”',
     },
     category: 'Infrastructure',
     location: '123 Main St',
@@ -49,28 +49,28 @@ const MOCK_ISSUES = [
     id: 2,
     title: 'Broken Streetlight',
     titles: {
-      hi: 'टूटी हुई सड़क की बत्ती',
-      mr: 'तुटलेला रस्त्यावरचा दिवा',
-      bn: 'ভাঙা রাস্তার বাতি',
-      ta: 'உடைந்த தெரு விளக்கு',
-      te: 'విరిగిన వీధి దీపం',
-      gu: 'તૂટેલી શેરી લાઇટ',
-      kn: 'ಮುರಿದ ಬೀದಿ ದೀಪ',
-      pa: 'ਟੁੱਟਿਆ ਸੜਕ ਦਾ ਦੀਵਾ',
-      ur: 'ٹوٹی ہوئی سڑک کی روشنی',
+      hi: 'à¤Ÿà¥‚à¤Ÿà¥€ à¤¹à¥à¤ˆ à¤¸à¤¡à¤¼à¤• à¤•à¥€ à¤¬à¤¤à¥à¤¤à¥€',
+      mr: 'à¤¤à¥à¤Ÿà¤²à¥‡à¤²à¤¾ à¤°à¤¸à¥à¤¤à¥à¤¯à¤¾à¤µà¤°à¤šà¤¾ à¤¦à¤¿à¤µà¤¾',
+      bn: 'à¦­à¦¾à¦™à¦¾ à¦°à¦¾à¦¸à§à¦¤à¦¾à¦° à¦¬à¦¾à¦¤à¦¿',
+      ta: 'à®‰à®Ÿà¯ˆà®¨à¯à®¤ à®¤à¯†à®°à¯ à®µà®¿à®³à®•à¯à®•à¯',
+      te: 'à°µà°¿à°°à°¿à°—à°¿à°¨ à°µà±€à°§à°¿ à°¦à±€à°ªà°‚',
+      gu: 'àª¤à«‚àªŸà«‡àª²à«€ àª¶à«‡àª°à«€ àª²àª¾àª‡àªŸ',
+      kn: 'à²®à³à²°à²¿à²¦ à²¬à³€à²¦à²¿ à²¦à³€à²ª',
+      pa: 'à¨Ÿà©à©±à¨Ÿà¨¿à¨† à¨¸à©œà¨• à¨¦à¨¾ à¨¦à©€à¨µà¨¾',
+      ur: 'Ù¹ÙˆÙ¹ÛŒ ÛÙˆØ¦ÛŒ Ø³Ú‘Ú© Ú©ÛŒ Ø±ÙˆØ´Ù†ÛŒ',
     },
     description:
       'The streetlight at Oak Ave has been broken for weeks, creating a safety hazard at night.',
     descriptions: {
-      hi: 'ओक एवेन्यू की सड़क बत्ती कई हफ्तों से टूटी है, जिससे रात में सुरक्षा का खतरा है।',
-      mr: 'ओक एवेन्यूवरचा दिवा अनेक आठवड्यांपासून बंद आहे, रात्री सुरक्षेचा धोका आहे।',
-      bn: 'ওক অ্যাভিনিউর রাস্তার বাতি কয়েক সপ্তাহ ধরে নষ্ট, রাতে নিরাপত্তার ঝুঁকি তৈরি হচ্ছে।',
-      ta: 'ஓக் அவென்யூவின் தெரு விளக்கு வாரங்களாக கேடாக உள்ளது, இரவில் பாதுகாப்பு அபாயம் உள்ளது.',
-      te: 'ఓక్ ఏవెన్యూ వద్ద వీధి దీపం వారాల తరబడి పాడైపోయింది, రాత్రి సమయంలో ప్రమాదం.',
-      gu: 'ઓક એવ.ની શેરી લાઇટ અઠવાડિયાઓથી બંધ છે, રાત્રે સુરક્ષા જોખમ ઊભું થઈ ગયું છે.',
-      kn: 'ಮುಖ್ಯ ರಸ್ತೆಯಲ್ಲಿ ದೊಡ್ಡ ಗುಂಡಿ ಬಿದ್ದಿದ್ದು ವಾಹನಗಳಿಗೆ ಹಾನಿ ಉಂಟಾಗುತ್ತಿದೆ.',
-      pa: 'ਓਕ ਐਵੇਨਿਊ ਦਾ ਦੀਵਾ ਹਫ਼ਤਿਆਂ ਤੋਂ ਟੁੱਟਿਆ ਹੈ, ਰਾਤ ਵੇਲੇ ਸੁਰੱਖਿਆ ਖ਼ਤਰਾ ਬਣ ਗਿਆ ਹੈ।',
-      ur: 'اوک ایونیو کی سڑک کی بتی ہفتوں سے خراب ہے, रात को حفاظتی خطرہ ہے۔',
+      hi: 'à¤“à¤• à¤à¤µà¥‡à¤¨à¥à¤¯à¥‚ à¤•à¥€ à¤¸à¤¡à¤¼à¤• à¤¬à¤¤à¥à¤¤à¥€ à¤•à¤ˆ à¤¹à¤«à¥à¤¤à¥‹à¤‚ à¤¸à¥‡ à¤Ÿà¥‚à¤Ÿà¥€ à¤¹à¥ˆ, à¤œà¤¿à¤¸à¤¸à¥‡ à¤°à¤¾à¤¤ à¤®à¥‡à¤‚ à¤¸à¥à¤°à¤•à¥à¤·à¤¾ à¤•à¤¾ à¤–à¤¤à¤°à¤¾ à¤¹à¥ˆà¥¤',
+      mr: 'à¤“à¤• à¤à¤µà¥‡à¤¨à¥à¤¯à¥‚à¤µà¤°à¤šà¤¾ à¤¦à¤¿à¤µà¤¾ à¤…à¤¨à¥‡à¤• à¤†à¤ à¤µà¤¡à¥à¤¯à¤¾à¤‚à¤ªà¤¾à¤¸à¥‚à¤¨ à¤¬à¤‚à¤¦ à¤†à¤¹à¥‡, à¤°à¤¾à¤¤à¥à¤°à¥€ à¤¸à¥à¤°à¤•à¥à¤·à¥‡à¤šà¤¾ à¤§à¥‹à¤•à¤¾ à¤†à¤¹à¥‡à¥¤',
+      bn: 'à¦“à¦• à¦…à§à¦¯à¦¾à¦­à¦¿à¦¨à¦¿à¦‰à¦° à¦°à¦¾à¦¸à§à¦¤à¦¾à¦° à¦¬à¦¾à¦¤à¦¿ à¦•à¦¯à¦¼à§‡à¦• à¦¸à¦ªà§à¦¤à¦¾à¦¹ à¦§à¦°à§‡ à¦¨à¦·à§à¦Ÿ, à¦°à¦¾à¦¤à§‡ à¦¨à¦¿à¦°à¦¾à¦ªà¦¤à§à¦¤à¦¾à¦° à¦à§à¦à¦•à¦¿ à¦¤à§ˆà¦°à¦¿ à¦¹à¦šà§à¦›à§‡à¥¤',
+      ta: 'à®“à®•à¯ à®…à®µà¯†à®©à¯à®¯à¯‚à®µà®¿à®©à¯ à®¤à¯†à®°à¯ à®µà®¿à®³à®•à¯à®•à¯ à®µà®¾à®°à®™à¯à®•à®³à®¾à®• à®•à¯‡à®Ÿà®¾à®• à®‰à®³à¯à®³à®¤à¯, à®‡à®°à®µà®¿à®²à¯ à®ªà®¾à®¤à¯à®•à®¾à®ªà¯à®ªà¯ à®…à®ªà®¾à®¯à®®à¯ à®‰à®³à¯à®³à®¤à¯.',
+      te: 'à°“à°•à± à°à°µà±†à°¨à±à°¯à±‚ à°µà°¦à±à°¦ à°µà±€à°§à°¿ à°¦à±€à°ªà°‚ à°µà°¾à°°à°¾à°² à°¤à°°à°¬à°¡à°¿ à°ªà°¾à°¡à±ˆà°ªà±‹à°¯à°¿à°‚à°¦à°¿, à°°à°¾à°¤à±à°°à°¿ à°¸à°®à°¯à°‚à°²à±‹ à°ªà±à°°à°®à°¾à°¦à°‚.',
+      gu: 'àª“àª• àªàªµ.àª¨à«€ àª¶à«‡àª°à«€ àª²àª¾àª‡àªŸ àª…àª àªµàª¾àª¡àª¿àª¯àª¾àª“àª¥à«€ àª¬àª‚àª§ àª›à«‡, àª°àª¾àª¤à«àª°à«‡ àª¸à«àª°àª•à«àª·àª¾ àªœà«‹àª–àª® àªŠàª­à«àª‚ àª¥àªˆ àª—àª¯à«àª‚ àª›à«‡.',
+      kn: 'à²®à³à²–à³à²¯ à²°à²¸à³à²¤à³†à²¯à²²à³à²²à²¿ à²¦à³Šà²¡à³à²¡ à²—à³à²‚à²¡à²¿ à²¬à²¿à²¦à³à²¦à²¿à²¦à³à²¦à³ à²µà²¾à²¹à²¨à²—à²³à²¿à²—à³† à²¹à²¾à²¨à²¿ à²‰à²‚à²Ÿà²¾à²—à³à²¤à³à²¤à²¿à²¦à³†.',
+      pa: 'à¨“à¨• à¨à¨µà©‡à¨¨à¨¿à¨Š à¨¦à¨¾ à¨¦à©€à¨µà¨¾ à¨¹à¨«à¨¼à¨¤à¨¿à¨†à¨‚ à¨¤à©‹à¨‚ à¨Ÿà©à©±à¨Ÿà¨¿à¨† à¨¹à©ˆ, à¨°à¨¾à¨¤ à¨µà©‡à¨²à©‡ à¨¸à©à¨°à©±à¨–à¨¿à¨† à¨–à¨¼à¨¤à¨°à¨¾ à¨¬à¨£ à¨—à¨¿à¨† à¨¹à©ˆà¥¤',
+      ur: 'Ø§ÙˆÚ© Ø§ÛŒÙˆÙ†ÛŒÙˆ Ú©ÛŒ Ø³Ú‘Ú© Ú©ÛŒ Ø¨ØªÛŒ ÛÙØªÙˆÚº Ø³Û’ Ø®Ø±Ø§Ø¨ ÛÛ’, à¤°à¤¾à¤¤ à¤•à¥‹ Ø­ÙØ§Ø¸ØªÛŒ Ø®Ø·Ø±Û ÛÛ’Û”',
     },
     category: 'Electricity',
     location: '45 Oak Ave',
@@ -87,9 +87,9 @@ const MOCK_ISSUES = [
   {
     id: 3,
     title: 'Major Water Leakage',
-    titles: { hi: 'पानी का भारी रिसाव', bn: 'বড় জল নিঃসরণ', te: 'భారీ నీటి లీకేజీ' },
+    titles: { hi: 'à¤ªà¤¾à¤¨à¥€ à¤•à¤¾ à¤­à¤¾à¤°à¥€ à¤°à¤¿à¤¸à¤¾à¤µ', bn: 'à¦¬à§œ à¦œà¦² à¦¨à¦¿à¦ƒà¦¸à¦°à¦£', te: 'à°­à°¾à°°à±€ à°¨à±€à°Ÿà°¿ à°²à±€à°•à±‡à°œà±€' },
     description: 'There is a massive water leak near the hospital entrance. The road is flooded.',
-    descriptions: { hi: 'अस्पताल के प्रवेश द्वार के पास पानी का भारी रिसाव हो रहा है। सड़क पर पानी भरा है।' },
+    descriptions: { hi: 'à¤…à¤¸à¥à¤ªà¤¤à¤¾à¤² à¤•à¥‡ à¤ªà¥à¤°à¤µà¥‡à¤¶ à¤¦à¥à¤µà¤¾à¤° à¤•à¥‡ à¤ªà¤¾à¤¸ à¤ªà¤¾à¤¨à¥€ à¤•à¤¾ à¤­à¤¾à¤°à¥€ à¤°à¤¿à¤¸à¤¾à¤µ à¤¹à¥‹ à¤°à¤¹à¤¾ à¤¹à¥ˆà¥¤ à¤¸à¤¡à¤¼à¤• à¤ªà¤° à¤ªà¤¾à¤¨à¥€ à¤­à¤°à¤¾ à¤¹à¥ˆà¥¤' },
     category: 'Water',
     location: 'City Hospital South Gate',
     progress: 'Reported',
@@ -110,9 +110,9 @@ const MOCK_ISSUES = [
   {
     id: 10,
     title: 'Streetlight Repair Needed (Nearby)',
-    titles: { hi: 'स्ट्रीट लाइट मरम्मत (पास में)', te: 'వీధిలైట్ల మరమ్మత్తు (సమీపంలో)' },
+    titles: { hi: 'à¤¸à¥à¤Ÿà¥à¤°à¥€à¤Ÿ à¤²à¤¾à¤‡à¤Ÿ à¤®à¤°à¤®à¥à¤®à¤¤ (à¤ªà¤¾à¤¸ à¤®à¥‡à¤‚)', te: 'à°µà±€à°§à°¿à°²à±ˆà°Ÿà±à°² à°®à°°à°®à±à°®à°¤à±à°¤à± (à°¸à°®à±€à°ªà°‚à°²à±‹)' },
     description: 'The streetlights on the main road are flickering.',
-    descriptions: { hi: 'मुख्य सड़क की स्ट्रीट लाइटें टिमटिमा रही हैं।' },
+    descriptions: { hi: 'à¤®à¥à¤–à¥à¤¯ à¤¸à¤¡à¤¼à¤• à¤•à¥€ à¤¸à¥à¤Ÿà¥à¤°à¥€à¤Ÿ à¤²à¤¾à¤‡à¤Ÿà¥‡à¤‚ à¤Ÿà¤¿à¤®à¤Ÿà¤¿à¤®à¤¾ à¤°à¤¹à¥€ à¤¹à¥ˆà¤‚à¥¤' },
     category: 'Electricity',
     location: 'Rajnagar Ext, Ghaziabad',
     progress: 'Reported',
@@ -141,7 +141,7 @@ function notificationsStorageKey(userId) {
 }
 
 function defaultWelcomeNotification() {
-  return { id: 1, message: 'Welcome to CitySpark AI!', type: 'info', read: false };
+  return { id: 1, message: 'Welcome to CitySpark!', type: 'info', read: false, createdAt: new Date().toISOString() };
 }
 
 export const AppProvider = ({ children }) => {
@@ -165,9 +165,9 @@ export const AppProvider = ({ children }) => {
 
   const checkBadges = useCallback((points) => {
     const badges = [];
-    if (points >= 100) badges.push({ id: 'watcher', name: 'Civic Watcher', icon: '👁️' });
-    if (points >= 500) badges.push({ id: 'guardian', name: 'Community Guardian', icon: '🛡️' });
-    if (points >= 1000) badges.push({ id: 'hero', name: 'City Hero', icon: '🦸' });
+    if (points >= 100) badges.push({ id: 'watcher', name: 'Civic Watcher', icon: 'ðŸ‘ï¸' });
+    if (points >= 500) badges.push({ id: 'guardian', name: 'Community Guardian', icon: 'ðŸ›¡ï¸' });
+    if (points >= 1000) badges.push({ id: 'hero', name: 'City Hero', icon: 'ðŸ¦¸' });
     return badges;
   }, []);
 
@@ -193,7 +193,7 @@ export const AppProvider = ({ children }) => {
         } catch (e) { console.error(e); }
         return;
       }
-      setNotifications((prev) => [{ id: Date.now(), message, type, read: false }, ...prev]);
+      setNotifications((prev) => [{ id: Date.now(), message, type, read: false, createdAt: new Date().toISOString() }, ...prev]);
     },
     [useRemoteDb]
   );
@@ -318,6 +318,30 @@ export const AppProvider = ({ children }) => {
     addNotification(`+${amount} Civic Points: ${reason}`, 'success');
   }, [checkBadges, addNotification]);
 
+  const settleIssueOutcomePoints = useCallback((issue, outcomeStatus) => {
+    if (!issue || !['Verified', 'Rejected'].includes(outcomeStatus)) return;
+
+    const voteMap = votes?.[issue.id] || issue.voteMap || {};
+    const reporterId = issue.authorId;
+
+    // Reporter gets points only when the report is genuinely completed and verified.
+    if (outcomeStatus === 'Verified' && reporterId) {
+      awardPoints(reporterId, 80, 'Genuine civic report completed and verified');
+    }
+
+    // Upvoters are rewarded/penalized only after final completion decision.
+    Object.entries(voteMap).forEach(([voterId, vote]) => {
+      if (vote !== 1) return;
+      if (!voterId || String(voterId) === String(reporterId)) return;
+
+      if (outcomeStatus === 'Verified') {
+        awardPoints(voterId, 15, 'Supported a report that was approved and completed');
+      } else if (outcomeStatus === 'Rejected') {
+        awardPoints(voterId, -10, 'Upvoted a report that was later rejected');
+      }
+    });
+  }, [votes, awardPoints]);
+
   const markNotificationRead = useCallback(async (id) => {
     if (useRemoteDb) {
       try {
@@ -352,16 +376,15 @@ export const AppProvider = ({ children }) => {
       const issueToVote = issues.find(i => i.id === issueId);
       if (!issueToVote) return;
       
-      const targetCoords = (user && user.lat && user.lng) ? { lat: user.lat, lng: user.lng } : userCoords;
+      // Keep voting radius checks consistent with Feed's Nearby filter:
+      // prefer live browser coords passed from Feed, then fall back to profile coords.
+      const targetCoords = userCoords || ((user && user.lat && user.lng) ? { lat: user.lat, lng: user.lng } : null);
 
       if (targetCoords && issueToVote.lat && issueToVote.lng) {
-        if (!isWithinRadius(targetCoords.lat, targetCoords.lng, issueToVote.lat, issueToVote.lng, 5000)) {
+        if (!isWithinRadius(targetCoords, { lat: issueToVote.lat, lng: issueToVote.lng }, 5, 'km')) {
           addNotification('You can only vote for issues near your location', 'error');
           return;
         }
-      } else {
-        addNotification('You can only vote for issues near your location', 'error');
-        return;
       }
 
       // Simulated Device ID Check (Anti-Gaming)
@@ -376,23 +399,11 @@ export const AppProvider = ({ children }) => {
 
       const issueVotes = votes[issueId] || {};
       const currentVote = issueVotes[userId];
-      let pointsAwarded = 0;
-      let reason = 'Voting on an issue';
-
-      if (currentVote === voteValue) {
-         pointsAwarded = -10;
-         reason = 'Removed vote from an issue';
-      } else {
-         pointsAwarded = currentVote ? 0 : 10;
-         reason = voteValue === 1 ? 'Upvoted an issue' : 'Downvoted an issue';
-      }
-
       if (useRemoteDb) {
         try {
           const { issue, votesForIssue } = await apiJson(`/api/issues/${issueId}/vote`, { method: 'POST', body: { voteValue } });
           setVotes((prev) => ({ ...prev, [issueId]: votesForIssue || {} }));
           setIssues((prev) => prev.map((i) => (i.id === issueId ? { ...i, ...issue } : i)));
-          if (pointsAwarded !== 0) awardPoints(userId, pointsAwarded, reason);
         } catch (e) { console.error('voteIssue', e); }
         return;
       }
@@ -435,7 +446,6 @@ export const AppProvider = ({ children }) => {
             updatedIssue.verificationStatus = 'Verified';
             updatedIssue.progress = 'Reported';
             addNotification(`Issue [${i.title}] has been community verified! Threshold met: ${dynamicThreshold} votes.`, 'success');
-            awardPoints(i.authorId, 50, 'Issue reached dynamic verification threshold');
             addAuditLog(i.id, 'Community Auto-Verification', 'Civic Network', 'Pending', 'Verified');
           }
 
@@ -445,9 +455,8 @@ export const AppProvider = ({ children }) => {
         }
         return i;
       }));
-      if (pointsAwarded !== 0) awardPoints(userId, pointsAwarded, reason);
     },
-    [useRemoteDb, votes, issues, addNotification, calculatePriorityScore, getPriorityLabel, awardPoints]
+    [useRemoteDb, votes, issues, addNotification, calculatePriorityScore, getPriorityLabel]
   );
 
   const addIssue = useCallback(
@@ -469,20 +478,18 @@ export const AppProvider = ({ children }) => {
           const { authorId: _a, ...payload } = enrichedIssue;
           const created = await apiJson('/api/issues', { method: 'POST', body: { ...payload, priority_score: priorityScore, priority_label: priorityLabel, prediction, escalation } });
           setIssues((prev) => [{ ...created, upvotes: created.upvotes ?? 0, downvotes: created.downvotes ?? 0 }, ...prev]);
-          awardPoints(user?.id, 50, 'Reporting a new civic issue');
           return created;
         } catch (e) { console.error('addIssue', e); }
         return;
       }
       const newIssue = { ...enrichedIssue, id: Date.now(), upvotes: 0, downvotes: 0, progress: 'Reported', priorityScore, priorityLabel, prediction, escalation, createdAt: new Date().toISOString() };
       setIssues((prev) => [newIssue, ...prev]);
-      awardPoints(user?.id, 50, 'Reporting a new civic issue');
       if (issue.lat && issue.lng) addNotification(`New Issue Reported Nearby: ${issue.title}`, 'nearby');
       if (escalation) addNotification(`Urgent: ${escalation.message}`, 'warning');
       else if (prediction) addNotification(`AI Insight: ${prediction.message}`, 'info');
       return newIssue;
     },
-    [useRemoteDb, issues, addNotification, user?.id, voteIssue, awardPoints]
+    [useRemoteDb, issues, addNotification, voteIssue]
   );
 
   const addComment = useCallback(
@@ -502,18 +509,26 @@ export const AppProvider = ({ children }) => {
   );
 
   const assignIssue = useCallback(
-    async (issueId, authorityId, deadline) => {
+    async (issueId, authorityId, deadline, options = {}) => {
       if (useRemoteDb) {
         try {
-          const updated = await apiJson(`/api/issues/${issueId}/assign`, { method: 'PATCH', body: { authorityId, deadline } });
+          const { note, mode, authorityName } = options;
+          const updated = await apiJson(`/api/issues/${issueId}/assign`, {
+            method: 'PATCH',
+            body: { authorityId, deadline, note, mode },
+          });
           setIssues((prev) => {
-            const list = prev.map((i) => (i.id === issueId ? { ...i, ...updated } : i));
-            const issue = list.find(l => l.id === issueId);
-            if (issue) addNotification(`Your report [${issue.title}] has been assigned to ${authorityId}`, 'info');
+            const list = prev.map((i) => (String(i.id) === String(issueId) ? { ...i, ...updated } : i));
+            const issue = list.find((l) => String(l.id) === String(issueId));
+            const assignee = authorityName || authorityId;
+            if (issue) addNotification(`Your report [${issue.title}] has been assigned to ${assignee}`, 'info');
             return list;
           });
           return updated;
-        } catch (e) { console.error(e); }
+        } catch (e) {
+          console.error(e);
+          throw e;
+        }
       }
       setIssues(prev => prev.map(i => {
         if (i.id === issueId) {
@@ -528,13 +543,16 @@ export const AppProvider = ({ children }) => {
   );
 
   const resolveIssue = useCallback(
-    async (issueId, completionImg) => {
+    async (issueId, completionImg, completionDescription) => {
       if (useRemoteDb) {
         try {
-          const updated = await apiJson(`/api/issues/${issueId}/resolve`, { method: 'PATCH', body: { completionImg } });
+          const updated = await apiJson(`/api/issues/${issueId}/resolve`, {
+            method: 'PATCH',
+            body: { completionImg, completionDescription },
+          });
           setIssues((prev) => {
-            const list = prev.map((i) => (i.id === issueId ? { ...i, ...updated } : i));
-            const issue = list.find(l => l.id === issueId);
+            const list = prev.map((i) => (String(i.id) === String(issueId) ? { ...i, ...updated } : i));
+            const issue = list.find((l) => String(l.id) === String(issueId));
             if (issue) addNotification(`GREAT NEWS! Your report [${issue.title}] is marked as Fixed. Please verify.`, 'success');
             return list;
           });
@@ -545,7 +563,14 @@ export const AppProvider = ({ children }) => {
         if (i.id === issueId) {
           addNotification(`GREAT NEWS! Your report [${i.title}] is marked as Fixed. Please verify.`, 'success');
           addAuditLog(i.id, 'Issue Resolved', i.assignedTo || 'Authority', i.progress, 'Resolved');
-          return { ...i, progress: 'Resolved', completionImg, verificationStatus: 'Pending' };
+          return {
+            ...i,
+            progress: 'Resolved',
+            completionImg,
+            completionDescription,
+            completedAt: new Date().toISOString(),
+            verificationStatus: 'Pending',
+          };
         }
         return i;
       }));
@@ -555,12 +580,16 @@ export const AppProvider = ({ children }) => {
 
   const verifyIssue = useCallback(
     async (issueId, status, comment) => {
+      const targetIssue = issues.find((i) => i.id === issueId);
+      const previousStatus = targetIssue?.verificationStatus;
+      const shouldSettle = ['Verified', 'Rejected'].includes(status) && previousStatus !== status;
+
       if (useRemoteDb) {
         try {
           const res = await apiJson(`/api/issues/${issueId}/verify`, { method: 'POST', body: { status, comment } });
-          setIssues((prev) => prev.map((i) => (i.id === issueId ? { ...i, verificationStatus: status } : i)));
+          setIssues((prev) => prev.map((i) => (i.id === issueId ? { ...i, verificationStatus: status, pointsOutcomeApplied: shouldSettle ? status : i.pointsOutcomeApplied } : i)));
+          if (shouldSettle && targetIssue) settleIssueOutcomePoints(targetIssue, status);
           addNotification(`Verification recorded for Issue #${issueId}`, 'success');
-          if (status === 'Verified') awardPoints(user?.id, 20, 'Verifying a resolved issue');
           return res;
         } catch (e) { console.error(e); }
       }
@@ -570,18 +599,19 @@ export const AppProvider = ({ children }) => {
             addNotification(`Escalation Alert: Issue [${i.title}] fix rejected by user. Re-assigning...`, 'warning');
             addAuditLog(i.id, 'Resolution Rejected', user?.id || 'User', 'Resolved', 'In Progress');
             const newScore = Math.min((i.priorityScore || 50) + 25, 100);
-            return { ...i, verificationStatus: 'Rejected', progress: 'In Progress', priorityScore: newScore, priorityLabel: getPriorityLabel(newScore) };
+            return { ...i, verificationStatus: 'Rejected', progress: 'In Progress', priorityScore: newScore, priorityLabel: getPriorityLabel(newScore), pointsOutcomeApplied: shouldSettle ? 'Rejected' : i.pointsOutcomeApplied };
           }
           if (status === 'Verified') {
-             awardPoints(user?.id, 20, 'Verifying a resolved issue');
              addAuditLog(i.id, 'User Verified Fix', user?.id || 'User', 'Resolved', 'Closed (Verified)');
           }
-          return { ...i, verificationStatus: status };
+          return { ...i, verificationStatus: status, pointsOutcomeApplied: shouldSettle ? status : i.pointsOutcomeApplied };
         }
         return i;
       }));
+
+      if (shouldSettle && targetIssue) settleIssueOutcomePoints(targetIssue, status);
     },
-    [useRemoteDb, addNotification, user?.id, awardPoints]
+    [useRemoteDb, addNotification, user?.id, issues, settleIssueOutcomePoints]
   );
 
   return (
@@ -597,3 +627,4 @@ export const AppProvider = ({ children }) => {
 };
 
 export const useApp = () => useContext(AppContext);
+

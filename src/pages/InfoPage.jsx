@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Button } from '@/components/ui/Button';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -14,11 +14,11 @@ const InfoPage = ({ title }) => {
         className="max-w-2xl mx-auto"
       >
         <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-8 text-primary shadow-antigravity cursor-default">
-          <span className="text-3xl">🚧</span>
+          <span className="text-3xl">ðŸš§</span>
         </div>
         <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">{title}</h1>
         <p className="text-lg text-muted-foreground mb-10 leading-relaxed">
-          We're currently building out this section of CitySpark AI. In the meantime, you can explore the dashboard or check out the interactive map.
+          We're currently building out this section of CitySpark. In the meantime, you can explore the dashboard or check out the interactive map.
         </p>
         <Link to="/">
           <Button size="lg" className="shadow-sm">
@@ -31,3 +31,4 @@ const InfoPage = ({ title }) => {
 };
 
 export default InfoPage;
+

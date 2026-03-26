@@ -1,5 +1,16 @@
 import { Issue } from './models/Issue.js';
 import { Notification } from './models/Notification.js';
+import { User } from './models/User.js';
+import bcrypt from 'bcryptjs';
+
+const LOWER_AUTHORITY_PASSWORD = 'Arpit@123';
+const LOWER_AUTHORITIES = [
+  { name: 'Aarushi Gupta', email: 'aarushi@gmail.com', department: 'Sanitation' },
+  { name: 'Aditi Gupta', email: 'aditi@gmail.com', department: 'Electricity' },
+  { name: 'Ashish Keshri', email: 'ashish@gmail.com', department: 'Water' },
+  { name: 'Rohan Pandey', email: 'rohan@gmail.com', department: 'Infrastructure' },
+  { name: 'Aryan Tiwari', email: 'aryan@gmail.com', department: 'Public Transport' },
+];
 
 /** Remove legacy global notifications (no userId) after schema change */
 export async function migrateNotificationsToPerUser() {
@@ -97,5 +108,43 @@ export async function seedIfEmpty() {
   if (count === 0) {
     await Issue.insertMany(MOCK_ISSUES);
     console.log('Seeded default issues');
+  }
+}
+
+export async function ensureLowerAuthorityAccounts() {
+  const passwordHash = await bcrypt.hash(LOWER_AUTHORITY_PASSWORD, 10);
+  let created = 0;
+  let updated = 0;
+
+  for (const account of LOWER_AUTHORITIES) {
+    const existing = await User.findOne({ email: account.email.toLowerCase() });
+    if (existing) {
+      existing.name = account.name;
+      existing.role = 'authority';
+      existing.department = account.department;
+      existing.designation = 'Lower Authority Officer';
+      existing.authorityLevel = 'L3';
+      existing.passwordHash = passwordHash;
+      existing.isVerified = true;
+      await existing.save();
+      updated += 1;
+      continue;
+    }
+
+    await User.create({
+      name: account.name,
+      email: account.email.toLowerCase(),
+      passwordHash,
+      role: 'authority',
+      department: account.department,
+      designation: 'Lower Authority Officer',
+      authorityLevel: 'L3',
+      isVerified: true,
+    });
+    created += 1;
+  }
+
+  if (created || updated) {
+    console.log(`Lower authority accounts ready (created: ${created}, updated: ${updated})`);
   }
 }
