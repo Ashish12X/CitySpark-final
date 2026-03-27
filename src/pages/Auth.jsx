@@ -212,7 +212,7 @@ const Auth = ({ isLogin: initialIsLogin = true }) => {
                 <div className="space-y-2">
                   <Label htmlFor="otp" className="text-center block">{t('Enter Code')}</Label>
                   <Input 
-                    id="otp" placeholder="123456" required maxLength={6}
+                    id="otp" placeholder={t('123456')} required maxLength={6}
                     className="text-center text-2xl tracking-[0.5em] font-mono h-12"
                     value={otpCode} onChange={(e) => setOtpCode(e.target.value)} autoFocus
                   />

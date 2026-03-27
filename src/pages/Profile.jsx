@@ -208,7 +208,7 @@ const Profile = () => {
                   <Label className="text-sm font-semibold">{t('Phone Number')}</Label>
                   <div className="relative">
                     <Smartphone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 00000 00000" className="pl-10 h-11 shadow-sm" voice />
+                    <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder={t("+91 00000 00000")} className="pl-10 h-11 shadow-sm" voice />
                   </div>
                 </div>
               </div>
@@ -335,11 +335,11 @@ const Profile = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold">{t('Current Password')}</Label>
-                  <Input type="password" placeholder="••••••••" className="h-11 shadow-sm" />
+                  <Input type="password" placeholder={t("••••••••")} className="h-11 shadow-sm" />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold">{t('New Password')}</Label>
-                  <Input type="password" placeholder="••••••••" className="h-11 shadow-sm" />
+                  <Input type="password" placeholder={t("••••••••")} className="h-11 shadow-sm" />
                 </div>
               </div>
               <Button variant="outline" className="h-10 px-6 font-bold">{t('Update Password')}</Button>

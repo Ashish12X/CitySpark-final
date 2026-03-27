@@ -18,8 +18,8 @@ const GUIDANCE_KB = [
     id: 'pan_card_services',
     title: 'PAN Card Services',
     department: 'Income Tax Department (NSDL / UTIITSL)',
-    location: 'Apply online via official PAN portals or authorized facilitation centers',
-    whereToApply: 'www.onlineservices.nsdl.com or www.pan.utiitsl.com',
+    location: 'https://www.utiitsl.com/',
+    whereToApply: 'https://www.utiitsl.com/',
     timeline: 'Usually 7-15 working days depending on verification',
     fees: 'As per PAN issuance/update fee schedule',
     tags: [

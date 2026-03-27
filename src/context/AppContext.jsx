@@ -1,10 +1,11 @@
-﻿import React, { createContext, useContext, useEffect, useLayoutEffect, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useLayoutEffect, useState, useCallback, useRef } from 'react';
 import { apiHealth, apiJson } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { findDuplicate } from '@/services/DuplicateService';
 import { calculatePriorityScore, getPriorityLabel, classifyIssue } from '@/services/CivicEngine';
 import { analyzePatterns, generateEscalation } from '@/services/PredictiveService';
 import { isWithinRadius } from '@/lib/geoUtils';
+import { useLanguage } from './LanguageContext';
 
 const AppContext = createContext();
 
@@ -13,27 +14,27 @@ const MOCK_ISSUES = [
     id: 1,
     title: 'Pothole on Main St',
     titles: {
-      hi: 'à¤®à¥‡à¤¨ à¤¸à¥à¤Ÿà¥à¤°à¥€à¤Ÿ à¤ªà¤° à¤—à¤¡à¥à¤¢à¤¾',
-      mr: 'à¤®à¥‡à¤¨ à¤¸à¥à¤Ÿà¥à¤°à¥€à¤Ÿà¤µà¤° à¤–à¤¡à¥à¤¡à¤¾',
-      bn: 'à¦®à§‡à¦‡à¦¨ à¦¸à§à¦Ÿà§à¦°à¦¿à¦Ÿà§‡ à¦—à¦°à§à¦¤',
-      ta: 'à®®à¯†à®¯à®¿à®©à¯ à®¸à¯à®Ÿà¯à®°à¯€à®Ÿà¯à®Ÿà®¿à®²à¯ à®•à¯à®´à®¿',
-      te: 'à°®à±†à°¯à°¿à°¨à± à°¸à±à°Ÿà±à°°à±€à°Ÿà±â€Œà°²à±‹ à°—à±à°‚à°¤',
-      gu: 'àª®à«‡àªˆàª¨ àª¸à«àªŸà«àª°à«€àªŸ àªªàª° àª–àª¾àª¡à«‹',
-      kn: 'à²®à³‡à²¯à²¿à²¨à³ à²¸à³à²Ÿà³à²°à³€à²Ÿà³â€Œà²¨à²²à³à²²à²¿ à²—à³à²‚à²¡à²¿',
-      pa: 'à¨®à©‡à¨¨ à¨¸à¨Ÿà¨°à©€à¨Ÿ à¨¤à©‡ à¨Ÿà©‹à¨†',
-      ur: 'Ù…ÛŒÙ† Ø³Ù¹Ø±ÛŒÙ¹ Ù¾Ø± Ú¯Ú‘Ú¾Ø§',
+      hi: 'मेन स्ट्रीट पर गड्ढा',
+      mr: 'मेन स्ट्रीटवर खड्डा',
+      bn: 'মেইন স্ট্রিটে গর্ত',
+      ta: 'மெயின் ஸ்ட்ரீட்டில் குழி',
+      te: 'మెయిన్ స్ట్రీట్‌లోని గుంత',
+      gu: 'મેઈન స్ట્રીટ પર ખાડો',
+      kn: 'ಮೇಯಿನ್ ಸ್ಟ್ರೀಟ್‌ನಲ್ಲಿ ಗುಂಡಿ',
+      pa: 'ਮੇਨ ਸਟਰੀਟ ਤੇ ਟੋਆ',
+      ur: 'مین سٹریٹ پر گڈھا',
     },
     description: 'A large pothole has formed on the main street causing damage to vehicles.',
     descriptions: {
-      hi: 'à¤®à¥à¤–à¥à¤¯ à¤¸à¤¡à¤¼à¤• à¤ªà¤° à¤à¤• à¤¬à¤¡à¤¼à¤¾ à¤—à¤¡à¥à¤¢à¤¾ à¤¬à¤¨ à¤—à¤¯à¤¾ à¤¹à¥ˆ à¤œà¤¿à¤¸à¤¸à¥‡ à¤µà¤¾à¤¹à¤¨à¥‹à¤‚ à¤•à¥‹ à¤¨à¥à¤•à¤¸à¤¾à¤¨ à¤¹à¥‹ à¤°à¤¹à¤¾ à¤¹à¥ˆà¥¤',
-      mr: 'à¤®à¥à¤–à¥à¤¯ à¤°à¤¸à¥à¤¤à¥à¤¯à¤¾à¤µà¤° à¤à¤• à¤®à¥‹à¤ à¤¾ à¤–à¤¡à¥à¤¡à¤¾ à¤¤à¤¯à¤¾à¤° à¤à¤¾à¤²à¤¾ à¤†à¤¹à¥‡ à¤œà¥à¤¯à¤¾à¤®à¥à¤³à¥‡ à¤µà¤¾à¤¹à¤¨à¤¾à¤‚à¤¨à¤¾ à¤¨à¥à¤•à¤¸à¤¾à¤¨ à¤¹à¥‹à¤¤ à¤†à¤¹à¥‡à¥¤',
-      bn: 'à¦ªà§à¦°à¦§à¦¾à¦¨ à¦°à¦¾à¦¸à§à¦¤à¦¾à¦¯à¦¼ à¦à¦•à¦Ÿà¦¿ à¦¬à¦¡à¦¼ à¦—à¦°à§à¦¤ à¦¤à§ˆà¦°à¦¿ à¦¹à¦¯à¦¼à§‡à¦›à§‡ à¦¯à¦¾ à¦¯à¦¾à¦¨à¦¬à¦¾à¦¹à¦¨à§‡à¦° à¦•à§à¦·à¦¤à¦¿ à¦•à¦°à¦›à§‡à¥¤',
-      ta: 'à®®à¯à®•à¯à®•à®¿à®¯ à®šà®¾à®²à¯ˆà®¯à®¿à®²à¯ à®’à®°à¯ à®ªà¯†à®°à®¿à®¯ à®•à¯à®´à®¿ à®‰à®°à¯à®µà®¾à®•à®¿à®¯à¯à®³à¯à®³à®¤à¯, à®µà®¾à®•à®©à®™à¯à®•à®³à¯à®•à¯à®•à¯ à®šà¯‡à®¤à®®à¯ à®à®±à¯à®ªà®Ÿà¯à®•à®¿à®±à®¤à¯.',
-      te: 'à°ªà±à°°à°§à°¾à°¨ à°°à±‹à°¡à±à°¡à±à°²à±‹ à°ªà±†à°¦à±à°¦ à°—à±à°‚à°¤ à°à°°à±à°ªà°¡à°¿à°‚à°¦à°¿, à°µà°¾à°¹à°¨à°¾à°²à°•à± à°¨à°·à±à°Ÿà°‚ à°•à°²à±à°—à±à°¤à±‹à°‚à°¦à°¿.',
-      gu: 'àª®à«àª–à«àª¯ àª°àª¸à«àª¤àª¾ àªªàª° àªàª• àª®à«‹àªŸà«‹ àª–àª¾àª¡à«‹ àªªàª¡à«àª¯à«‹ àª›à«‡ àªœà«‡ àªµàª¾àª¹àª¨à«‹àª¨à«‡ àª¨à«àª•àª¸àª¾àª¨ àª•àª°à«€ àª°àª¹à«àª¯à«‹ àª›à«‡.',
-      kn: 'à²®à³à²–à³à²¯ à²°à²¸à³à²¤à³†à²¯à²²à³à²²à²¿ à²¦à³Šà²¡à³à²¡ à²—à³à²‚à²¡à²¿ à²¬à²¿à²¦à³à²¦à²¿à²¦à³à²¦à³ à²µà²¾à²¹à²¨à²—à²³à²¿à²—à³† à²¹à²¾à²¨à²¿ à²‰à²‚à²Ÿà²¾à²—à³à²¤à³à²¤à²¿à²¦à³†.',
-      pa: 'à¨®à©à©±à¨– à¨¸à©œà¨• à¨¤à©‡ à¨‡à©±à¨• à¨µà©±à¨¡à¨¾ à¨Ÿà©‹à¨† à¨¬à¨£ à¨—à¨¿à¨† à¨¹à©ˆ à¨œà©‹ à¨µà¨¾à¨¹à¨¨à¨¾à¨‚ à¨¨à©‚à©° à¨¨à©à¨•à¨¸à¨¾à¨¨ à¨ªà¨¹à©à©°à¨šà¨¾ à¨°à¨¿à¨¹à¨¾ à¨¹à©ˆà¥¤',
-      ur: 'Ù…ÛŒÙ† Ø³Ù¹Ø±ÛŒÙ¹ Ù¾Ø± à°’à°• Ø¨Ú‘Ø§ Ú¯Ú‘Ú¾Ø§ Ø¨Ù† Ú¯ÛŒØ§ ÛÛ’ à¨œà©‹ Ú¯Ø§Ú‘ÛŒÙˆÚº Ú©Ùˆ Ù†Ù‚ØµØ§Ù† Ù¾ÛÙ†Ú†à¨¾ Ø±ÛØ§ ÛÛ’Û”',
+      hi: 'मुख्य सड़क पर एक बड़ा गड्ढा बन गया है जिससे वाहनों को नुकसान हो रहा है।',
+      mr: 'मुख्य रस्त्यावर एक मोठा खड्डा तयार झाला आहे ज्यामुळे वाहनांचे नुकसान होत आहे।',
+      bn: 'প্রধান রাস্তায় একটি বড় গর্ত তৈরি হয়েছে যা যানবাহনের ক্ষতি করছে।',
+      ta: 'முக்கிய சாலையில் ஒரு பெரிய குழி உருவாகியுள்ளது, வாகனங்களுக்கு சேதம் ஏற்படுகிறது.',
+      te: 'ప్రధాన రోడ్డులో పెద్ద గుంత ఏర్పడింది, వాహనాలకు నష్టం కలుగుతోంది.',
+      gu: 'મુખ્ય રસ્તા પર એક મોટો ખાડો પડ્યો છે જે વાહનોને નુકસાન કરી રહ્યો છે.',
+      kn: 'ಮುಖ್ಯ ರಸ್ತೆಯಲ್ಲಿ ದೊಡ್ಡ ಗುಂಡಿ ಬಿದ್ದಿದ್ದು ವಾಹನಗಳಿಗೆ ಹಾನಿ ಉಂಟಾಗುತ್ತಿದೆ.',
+      pa: 'ਮੁੱਖ ਸੜਕ ਤੇ ਇਕ ਵੱਡਾ ਟੋਆ ਬਣ ਗਿਆ ਹੈ ਜੋ ਵਾਹਨਾਂ ਨੂੰ ਨੁਕਸਾਨ ਪਹੁੰਚਾ ਰਿਹਾ ਹੈ।',
+      ur: 'مین سٹریٹ پر ایک بڑا گڈھا بن گیا ہے جو گاڑیوں کو نقصان پہنچا رہا ہے۔',
     },
     category: 'Infrastructure',
     location: '123 Main St',
@@ -49,28 +50,28 @@ const MOCK_ISSUES = [
     id: 2,
     title: 'Broken Streetlight',
     titles: {
-      hi: 'à¤Ÿà¥‚à¤Ÿà¥€ à¤¹à¥à¤ˆ à¤¸à¤¡à¤¼à¤• à¤•à¥€ à¤¬à¤¤à¥à¤¤à¥€',
-      mr: 'à¤¤à¥à¤Ÿà¤²à¥‡à¤²à¤¾ à¤°à¤¸à¥à¤¤à¥à¤¯à¤¾à¤µà¤°à¤šà¤¾ à¤¦à¤¿à¤µà¤¾',
-      bn: 'à¦­à¦¾à¦™à¦¾ à¦°à¦¾à¦¸à§à¦¤à¦¾à¦° à¦¬à¦¾à¦¤à¦¿',
-      ta: 'à®‰à®Ÿà¯ˆà®¨à¯à®¤ à®¤à¯†à®°à¯ à®µà®¿à®³à®•à¯à®•à¯',
-      te: 'à°µà°¿à°°à°¿à°—à°¿à°¨ à°µà±€à°§à°¿ à°¦à±€à°ªà°‚',
-      gu: 'àª¤à«‚àªŸà«‡àª²à«€ àª¶à«‡àª°à«€ àª²àª¾àª‡àªŸ',
-      kn: 'à²®à³à²°à²¿à²¦ à²¬à³€à²¦à²¿ à²¦à³€à²ª',
-      pa: 'à¨Ÿà©à©±à¨Ÿà¨¿à¨† à¨¸à©œà¨• à¨¦à¨¾ à¨¦à©€à¨µà¨¾',
-      ur: 'Ù¹ÙˆÙ¹ÛŒ ÛÙˆØ¦ÛŒ Ø³Ú‘Ú© Ú©ÛŒ Ø±ÙˆØ´Ù†ÛŒ',
+      hi: 'टूटी हुई सड़क की बत्ती',
+      mr: 'तुटलेला रस्त्यावरचा दिवा',
+      bn: 'ভাঙা রাস্তার বাতি',
+      ta: 'உடைந்த தெரு விளக்கு',
+      te: 'విరిగిన వీధి దీపం',
+      gu: 'તૂટેલી શેરી લાઈટ',
+      kn: 'ಮುರಿದ ಬೀದಿ ದೀಪ',
+      pa: 'ਟੁੱਟਿਆ ਸੜਕ ਦਾ ਦੀਵਾ',
+      ur: 'ٹوٹی ہوئی سڑک کی روشنی',
     },
     description:
       'The streetlight at Oak Ave has been broken for weeks, creating a safety hazard at night.',
     descriptions: {
-      hi: 'à¤“à¤• à¤à¤µà¥‡à¤¨à¥à¤¯à¥‚ à¤•à¥€ à¤¸à¤¡à¤¼à¤• à¤¬à¤¤à¥à¤¤à¥€ à¤•à¤ˆ à¤¹à¤«à¥à¤¤à¥‹à¤‚ à¤¸à¥‡ à¤Ÿà¥‚à¤Ÿà¥€ à¤¹à¥ˆ, à¤œà¤¿à¤¸à¤¸à¥‡ à¤°à¤¾à¤¤ à¤®à¥‡à¤‚ à¤¸à¥à¤°à¤•à¥à¤·à¤¾ à¤•à¤¾ à¤–à¤¤à¤°à¤¾ à¤¹à¥ˆà¥¤',
-      mr: 'à¤“à¤• à¤à¤µà¥‡à¤¨à¥à¤¯à¥‚à¤µà¤°à¤šà¤¾ à¤¦à¤¿à¤µà¤¾ à¤…à¤¨à¥‡à¤• à¤†à¤ à¤µà¤¡à¥à¤¯à¤¾à¤‚à¤ªà¤¾à¤¸à¥‚à¤¨ à¤¬à¤‚à¤¦ à¤†à¤¹à¥‡, à¤°à¤¾à¤¤à¥à¤°à¥€ à¤¸à¥à¤°à¤•à¥à¤·à¥‡à¤šà¤¾ à¤§à¥‹à¤•à¤¾ à¤†à¤¹à¥‡à¥¤',
-      bn: 'à¦“à¦• à¦…à§à¦¯à¦¾à¦­à¦¿à¦¨à¦¿à¦‰à¦° à¦°à¦¾à¦¸à§à¦¤à¦¾à¦° à¦¬à¦¾à¦¤à¦¿ à¦•à¦¯à¦¼à§‡à¦• à¦¸à¦ªà§à¦¤à¦¾à¦¹ à¦§à¦°à§‡ à¦¨à¦·à§à¦Ÿ, à¦°à¦¾à¦¤à§‡ à¦¨à¦¿à¦°à¦¾à¦ªà¦¤à§à¦¤à¦¾à¦° à¦à§à¦à¦•à¦¿ à¦¤à§ˆà¦°à¦¿ à¦¹à¦šà§à¦›à§‡à¥¤',
-      ta: 'à®“à®•à¯ à®…à®µà¯†à®©à¯à®¯à¯‚à®µà®¿à®©à¯ à®¤à¯†à®°à¯ à®µà®¿à®³à®•à¯à®•à¯ à®µà®¾à®°à®™à¯à®•à®³à®¾à®• à®•à¯‡à®Ÿà®¾à®• à®‰à®³à¯à®³à®¤à¯, à®‡à®°à®µà®¿à®²à¯ à®ªà®¾à®¤à¯à®•à®¾à®ªà¯à®ªà¯ à®…à®ªà®¾à®¯à®®à¯ à®‰à®³à¯à®³à®¤à¯.',
-      te: 'à°“à°•à± à°à°µà±†à°¨à±à°¯à±‚ à°µà°¦à±à°¦ à°µà±€à°§à°¿ à°¦à±€à°ªà°‚ à°µà°¾à°°à°¾à°² à°¤à°°à°¬à°¡à°¿ à°ªà°¾à°¡à±ˆà°ªà±‹à°¯à°¿à°‚à°¦à°¿, à°°à°¾à°¤à±à°°à°¿ à°¸à°®à°¯à°‚à°²à±‹ à°ªà±à°°à°®à°¾à°¦à°‚.',
-      gu: 'àª“àª• àªàªµ.àª¨à«€ àª¶à«‡àª°à«€ àª²àª¾àª‡àªŸ àª…àª àªµàª¾àª¡àª¿àª¯àª¾àª“àª¥à«€ àª¬àª‚àª§ àª›à«‡, àª°àª¾àª¤à«àª°à«‡ àª¸à«àª°àª•à«àª·àª¾ àªœà«‹àª–àª® àªŠàª­à«àª‚ àª¥àªˆ àª—àª¯à«àª‚ àª›à«‡.',
-      kn: 'à²®à³à²–à³à²¯ à²°à²¸à³à²¤à³†à²¯à²²à³à²²à²¿ à²¦à³Šà²¡à³à²¡ à²—à³à²‚à²¡à²¿ à²¬à²¿à²¦à³à²¦à²¿à²¦à³à²¦à³ à²µà²¾à²¹à²¨à²—à²³à²¿à²—à³† à²¹à²¾à²¨à²¿ à²‰à²‚à²Ÿà²¾à²—à³à²¤à³à²¤à²¿à²¦à³†.',
-      pa: 'à¨“à¨• à¨à¨µà©‡à¨¨à¨¿à¨Š à¨¦à¨¾ à¨¦à©€à¨µà¨¾ à¨¹à¨«à¨¼à¨¤à¨¿à¨†à¨‚ à¨¤à©‹à¨‚ à¨Ÿà©à©±à¨Ÿà¨¿à¨† à¨¹à©ˆ, à¨°à¨¾à¨¤ à¨µà©‡à¨²à©‡ à¨¸à©à¨°à©±à¨–à¨¿à¨† à¨–à¨¼à¨¤à¨°à¨¾ à¨¬à¨£ à¨—à¨¿à¨† à¨¹à©ˆà¥¤',
-      ur: 'Ø§ÙˆÚ© Ø§ÛŒÙˆÙ†ÛŒÙˆ Ú©ÛŒ Ø³Ú‘Ú© Ú©ÛŒ Ø¨ØªÛŒ ÛÙØªÙˆÚº Ø³Û’ Ø®Ø±Ø§Ø¨ ÛÛ’, à¤°à¤¾à¤¤ à¤•à¥‹ Ø­ÙØ§Ø¸ØªÛŒ Ø®Ø·Ø±Û ÛÛ’Û”',
+      hi: 'ओक एवेन्यू की सड़क बत्ती कई हफ्तों से टूटी है, जिससे रात में सुरक्षा का खतरा है।',
+      mr: 'ओक एव्हेन्यूवरचा दिवा अनेक आठवड्यांपासून बंद आहे, रात्री सुरक्षेचा धोका आहे।',
+      bn: 'ওক অ্যাভিনিউর রাস্তার বাতি কয়েক সপ্তাহ ধরে নষ্ট, রাতে নিরাপত্তার ঝুঁকি তৈরি হচ্ছে।',
+      ta: 'ஓக் அவென்யூவின் தெரு விளக்கு வாரங்களாக கேடாக உள்ளது, இரவில் பாதுகாப்பு அபாயம் உள்ளது.',
+      te: 'ఓక్ అవెన్యూ వద్ద వీధి దీపం వారాల తరబడి పాడైపోయింది, రాత్రి సమయంలో ప్రమాదం.',
+      gu: 'ઓક એવ.ની શેરી લાઈટ અઠવાડિયાથી બંધ છે, રાત્રે સુરક્ષા જોખમ ઊભું થઈ ગયું છે.',
+      kn: 'ಓಕ್ ಅವೆನ್ಯೂ ರಸ್ತೆಯ ಬೀದಿ ದೀಪವು ವಾರಗಳಿಂದ ಕೆಟ್ಟಿದ್ದು, ರಾತ್ರಿಯಲ್ಲಿ ಓಡಾಡಲು ಭಯವಾಗುತ್ತದೆ.',
+      pa: 'ਓਕ ਐਵੇਨਿਊ ਦਾ ਦੀਵਾ ਹਫ਼ਤਿਆਂ ਤੋਂ ਟੁੱਟਿਆ ਹੈ, ਰਾਤ ਵੇਲੇ ਸੁਰੱਖਿਆ ਖ਼ਤਰਾ ਬਣ ਗਿਆ ਹੈ।',
+      ur: 'اوک ایونیو کی سڑک کی بتی ہفتوں سے خراب ہے، رات کو حفاظتی خطرہ ہے۔',
     },
     category: 'Electricity',
     location: '45 Oak Ave',
@@ -87,9 +88,9 @@ const MOCK_ISSUES = [
   {
     id: 3,
     title: 'Major Water Leakage',
-    titles: { hi: 'à¤ªà¤¾à¤¨à¥€ à¤•à¤¾ à¤­à¤¾à¤°à¥€ à¤°à¤¿à¤¸à¤¾à¤µ', bn: 'à¦¬à§œ à¦œà¦² à¦¨à¦¿à¦ƒà¦¸à¦°à¦£', te: 'à°­à°¾à°°à±€ à°¨à±€à°Ÿà°¿ à°²à±€à°•à±‡à°œà±€' },
+    titles: { hi: 'पानी का भारी रिसाव', bn: 'বড় জল নিঃসরণ', te: 'భారీ నీటి లీకేజీ' },
     description: 'There is a massive water leak near the hospital entrance. The road is flooded.',
-    descriptions: { hi: 'à¤…à¤¸à¥à¤ªà¤¤à¤¾à¤² à¤•à¥‡ à¤ªà¥à¤°à¤µà¥‡à¤¶ à¤¦à¥à¤µà¤¾à¤° à¤•à¥‡ à¤ªà¤¾à¤¸ à¤ªà¤¾à¤¨à¥€ à¤•à¤¾ à¤­à¤¾à¤°à¥€ à¤°à¤¿à¤¸à¤¾à¤µ à¤¹à¥‹ à¤°à¤¹à¤¾ à¤¹à¥ˆà¥¤ à¤¸à¤¡à¤¼à¤• à¤ªà¤° à¤ªà¤¾à¤¨à¥€ à¤­à¤°à¤¾ à¤¹à¥ˆà¥¤' },
+    descriptions: { hi: 'अस्पताल के प्रवेश द्वार के पास पानी का भारी रिसाव हो रहा है। सड़क पर पानी भरा है।' },
     category: 'Water',
     location: 'City Hospital South Gate',
     progress: 'Reported',
@@ -110,9 +111,9 @@ const MOCK_ISSUES = [
   {
     id: 10,
     title: 'Streetlight Repair Needed (Nearby)',
-    titles: { hi: 'à¤¸à¥à¤Ÿà¥à¤°à¥€à¤Ÿ à¤²à¤¾à¤‡à¤Ÿ à¤®à¤°à¤®à¥à¤®à¤¤ (à¤ªà¤¾à¤¸ à¤®à¥‡à¤‚)', te: 'à°µà±€à°§à°¿à°²à±ˆà°Ÿà±à°² à°®à°°à°®à±à°®à°¤à±à°¤à± (à°¸à°®à±€à°ªà°‚à°²à±‹)' },
+    titles: { hi: 'स्ट्रीट लाइट मरम्मत (पास में)', te: 'వీధిలైట్ల మరమ్మత్తు (సమీపంలో)' },
     description: 'The streetlights on the main road are flickering.',
-    descriptions: { hi: 'à¤®à¥à¤–à¥à¤¯ à¤¸à¤¡à¤¼à¤• à¤•à¥€ à¤¸à¥à¤Ÿà¥à¤°à¥€à¤Ÿ à¤²à¤¾à¤‡à¤Ÿà¥‡à¤‚ à¤Ÿà¤¿à¤®à¤Ÿà¤¿à¤®à¤¾ à¤°à¤¹à¥€ à¤¹à¥ˆà¤‚à¥¤' },
+    descriptions: { hi: 'मुख्य सड़क की स्ट्रीट लाइटें टिमटिमा रही हैं।' },
     category: 'Electricity',
     location: 'Rajnagar Ext, Ghaziabad',
     progress: 'Reported',
@@ -127,25 +128,63 @@ const MOCK_ISSUES = [
   },
 ];
 
+// Helper to sanitize text (keeping it simple since we fixed the MOCK data)
+function sanitizeIssueText(issue) {
+  return issue;
+}
+
+// Deduplication helper to remove duplicate issues by ID
+function deduplicateIssues(issues) {
+  if (!Array.isArray(issues)) return [];
+  const seen = new Set();
+  return issues.filter(issue => {
+    const id = String(issue?.id);
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
+
 function loadLocalIssues() {
   const saved = localStorage.getItem('cityspark_issues');
   let issues = saved ? JSON.parse(saved) : [...MOCK_ISSUES];
   if (!issues.find(i => i.id === 10)) {
     issues.push(MOCK_ISSUES.find(i => i.id === 10));
   }
-  return issues;
+  return deduplicateIssues(issues.map(sanitizeIssueText));
 }
 
 function notificationsStorageKey(userId) {
   return `cityspark_notifications_${userId}`;
 }
 
-function defaultWelcomeNotification() {
-  return { id: 1, message: 'Welcome to CitySpark!', type: 'info', read: false, createdAt: new Date().toISOString() };
+function normalizeEntityId(value) {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'string' || typeof value === 'number') {
+    const normalized = String(value).trim();
+    return normalized || null;
+  }
+  if (typeof value === 'object') {
+    const candidate = value.$oid || value._id || value.id;
+    if (candidate !== undefined && candidate !== null) {
+      const normalized = String(candidate).trim();
+      return normalized || null;
+    }
+    if (typeof value.toString === 'function') {
+      const normalized = String(value.toString()).trim();
+      if (normalized && normalized !== '[object Object]') return normalized;
+    }
+  }
+  return null;
+}
+
+function defaultWelcomeNotification(t) {
+  return { id: 1, message: t('Welcome to CitySpark!'), type: 'info', read: false, createdAt: new Date().toISOString() };
 }
 
 export const AppProvider = ({ children }) => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [useRemoteDb, setUseRemoteDb] = useState(false);
 
   const [issues, setIssues] = useState(loadLocalIssues);
@@ -165,11 +204,11 @@ export const AppProvider = ({ children }) => {
 
   const checkBadges = useCallback((points) => {
     const badges = [];
-    if (points >= 100) badges.push({ id: 'watcher', name: 'Civic Watcher', icon: 'ðŸ‘ï¸' });
-    if (points >= 500) badges.push({ id: 'guardian', name: 'Community Guardian', icon: 'ðŸ›¡ï¸' });
-    if (points >= 1000) badges.push({ id: 'hero', name: 'City Hero', icon: 'ðŸ¦¸' });
+    if (points >= 100) badges.push({ id: 'watcher', name: t('Watcher'), icon: '👁️' });
+    if (points >= 500) badges.push({ id: 'guardian', name: t('Guardian'), icon: '🛡️' });
+    if (points >= 1000) badges.push({ id: 'hero', name: t('Hero'), icon: '🦸' });
     return badges;
-  }, []);
+  }, [t]);
 
   const addAuditLog = useCallback((issueId, action, performedBy, previousStatus, newStatus) => {
     setIssues(prev => prev.map(i => {
@@ -205,11 +244,11 @@ export const AppProvider = ({ children }) => {
       const prevStats = prevUserStats.current[userId] || { badges: [] };
       if (stats.badges && stats.badges.length > (prevStats.badges ? prevStats.badges.length : 0)) {
         const latestBadge = stats.badges[stats.badges.length - 1];
-        addNotification(`Congratulations! You've earned the ${latestBadge.name} badge! ${latestBadge.icon}`, 'success');
+        addNotification(`${t("Congratulations! You've earned the")} ${latestBadge.name} ${t('badge!')} ${latestBadge.icon}`, 'success');
       }
     });
     prevUserStats.current = userStats;
-  }, [userStats, addNotification]);
+  }, [userStats, addNotification, t]);
 
   useEffect(() => {
     localStorage.setItem('cityspark_user_stats', JSON.stringify(userStats));
@@ -223,7 +262,7 @@ export const AppProvider = ({ children }) => {
       try {
         const data = await apiJson('/api/bootstrap');
         if (cancelled) return;
-        setIssues(data.issues || []);
+        setIssues(deduplicateIssues((data.issues || []).map(sanitizeIssueText)));
         setVotes(data.votes || {});
         setComments(data.comments || {});
         setUseRemoteDb(true);
@@ -250,7 +289,7 @@ export const AppProvider = ({ children }) => {
       const now = new Date();
       setIssues(prev => prev.map(i => {
         if (i.deadline && new Date(i.deadline) < now && i.progress === 'In Progress') {
-          addNotification(`SLA Breach: Issue [${i.title}] auto-escalated to higher authority.`, 'warning');
+          addNotification(`${t('SLA Breach')}: ${t('Issue')} [${i.title}] ${t('auto-escalated to higher authority.')}`, 'warning');
           addAuditLog(i.id, 'SLA Breach Auto-Escalation', 'System AI', i.progress, 'Escalated');
           return { ...i, progress: 'Escalated', priorityScore: 100, priorityLabel: 'Critical' };
         }
@@ -258,7 +297,7 @@ export const AppProvider = ({ children }) => {
       }));
     }, 60000); // Check every minute
     return () => clearInterval(interval);
-  }, [addAuditLog, addNotification]);
+  }, [addAuditLog, addNotification, t]);
 
   useLayoutEffect(() => {
     if (useRemoteDb || !user?.id) return;
@@ -267,12 +306,12 @@ export const AppProvider = ({ children }) => {
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
-        setNotifications(Array.isArray(parsed) ? parsed : [defaultWelcomeNotification()]);
-      } catch { setNotifications([defaultWelcomeNotification()]); }
+        setNotifications(Array.isArray(parsed) ? parsed : [defaultWelcomeNotification(t)]);
+      } catch { setNotifications([defaultWelcomeNotification(t)]); }
     } else {
-      setNotifications([defaultWelcomeNotification()]);
+      setNotifications([defaultWelcomeNotification(t)]);
     }
-  }, [useRemoteDb, user?.id]);
+  }, [useRemoteDb, user?.id, t]);
 
   useEffect(() => {
     if (useRemoteDb || !user?.id) return;
@@ -292,15 +331,16 @@ export const AppProvider = ({ children }) => {
   }, [comments, useRemoteDb]);
 
   const awardPoints = useCallback((userId, amount, reason) => {
-    if (!userId) {
+    const normalizedUserId = normalizeEntityId(userId);
+    if (!normalizedUserId) {
       console.warn('[AppContext] awardPoints failed: No userId provided');
       return;
     }
     
-    console.log(`[AppContext] Awarding ${amount} points to User ${userId} for: ${reason}`);
+    console.log(`[AppContext] Awarding ${amount} points to User ${normalizedUserId} for: ${reason}`);
     
     setUserStats(prev => {
-      const stats = prev[userId] || { points: 0, badges: [], trustScore: 50 };
+      const stats = prev[normalizedUserId] || { points: 0, badges: [], trustScore: 50 };
       const newPoints = stats.points + amount;
       
       // Dynamic Trust Score Logic
@@ -310,19 +350,19 @@ export const AppProvider = ({ children }) => {
       const newTrust = Math.min(Math.max((stats.trustScore || 50) + trustAdjustment, 0), 100);
 
       const newBadges = checkBadges(newPoints);
-      const newState = { ...prev, [userId]: { points: newPoints, badges: newBadges, trustScore: newTrust } };
-      console.log(`[AppContext] Updated UserStats for ${userId}:`, newState[userId]);
+      const newState = { ...prev, [normalizedUserId]: { points: newPoints, badges: newBadges, trustScore: newTrust } };
+      console.log(`[AppContext] Updated UserStats for ${normalizedUserId}:`, newState[normalizedUserId]);
       return newState;
     });
 
-    addNotification(`+${amount} Civic Points: ${reason}`, 'success');
-  }, [checkBadges, addNotification]);
+    addNotification(`${amount > 0 ? '+' : ''}${amount} ${t('pts')}: ${t(reason)}`, 'success');
+  }, [checkBadges, addNotification, t]);
 
   const settleIssueOutcomePoints = useCallback((issue, outcomeStatus) => {
     if (!issue || !['Verified', 'Rejected'].includes(outcomeStatus)) return;
 
     const voteMap = votes?.[issue.id] || issue.voteMap || {};
-    const reporterId = issue.authorId;
+    const reporterId = normalizeEntityId(issue.authorId);
 
     // Reporter gets points only when the report is genuinely completed and verified.
     if (outcomeStatus === 'Verified' && reporterId) {
@@ -376,24 +416,21 @@ export const AppProvider = ({ children }) => {
       const issueToVote = issues.find(i => i.id === issueId);
       if (!issueToVote) return;
       
-      // Keep voting radius checks consistent with Feed's Nearby filter:
-      // prefer live browser coords passed from Feed, then fall back to profile coords.
       const targetCoords = userCoords || ((user && user.lat && user.lng) ? { lat: user.lat, lng: user.lng } : null);
 
       if (targetCoords && issueToVote.lat && issueToVote.lng) {
         if (!isWithinRadius(targetCoords, { lat: issueToVote.lat, lng: issueToVote.lng }, 5, 'km')) {
-          addNotification('You can only vote for issues near your location', 'error');
+          addNotification(t('You can only vote for issues near your location'), 'error');
           return;
         }
       }
 
-      // Simulated Device ID Check (Anti-Gaming)
       const deviceId = localStorage.getItem('cityspark_device_id') || 'dev_' + Math.random().toString(36).substr(2, 9);
       if (!localStorage.getItem('cityspark_device_id')) localStorage.setItem('cityspark_device_id', deviceId);
       
       const votedDevices = JSON.parse(localStorage.getItem(`cityspark_voted_${issueId}`) || '[]');
       if (voteValue !== 0 && votedDevices.includes(deviceId) && !votes[issueId]?.[userId]) {
-        addNotification('Security Alert: Multiple votes from same device detected.', 'warning');
+        addNotification(t('Security Alert: Multiple votes from same device detected.'), 'warning');
         return;
       }
 
@@ -421,7 +458,6 @@ export const AppProvider = ({ children }) => {
       }
       setVotes((prev) => ({ ...prev, [issueId]: newIssueVotes }));
       
-      // Update Device Map for anti-gaming
       if (voteValue !== 0 && !votedDevices.includes(deviceId)) {
         localStorage.setItem(`cityspark_voted_${issueId}`, JSON.stringify([...votedDevices, deviceId]));
       }
@@ -436,8 +472,7 @@ export const AppProvider = ({ children }) => {
           const totalVotes = Object.keys(newIssueVotes).length;
           const upvoteCount = Object.values(newIssueVotes).filter(v => v === 1).length;
           
-          // Dynamic Threshold Logic: 25% of nearby active users
-          const nearbyUsers = Object.values(userStats).filter(u => u.points > 10).length || 10; // Fallback to 10
+          const nearbyUsers = Object.values(userStats).filter(u => u.points > 10).length || 10;
           const dynamicThreshold = Math.max(3, Math.floor(nearbyUsers * 0.25));
           
           const updatedIssue = { ...i, upvotes: newUpvotes, downvotes: newDownvotes };
@@ -445,7 +480,7 @@ export const AppProvider = ({ children }) => {
           if (totalVotes >= dynamicThreshold && (upvoteCount / totalVotes) >= 0.7 && i.verificationStatus !== 'Verified') {
             updatedIssue.verificationStatus = 'Verified';
             updatedIssue.progress = 'Reported';
-            addNotification(`Issue [${i.title}] has been community verified! Threshold met: ${dynamicThreshold} votes.`, 'success');
+            addNotification(`${t('Issue')} [${i.title}] ${t('has been community verified!')}`, 'success');
             addAuditLog(i.id, 'Community Auto-Verification', 'Civic Network', 'Pending', 'Verified');
           }
 
@@ -456,7 +491,7 @@ export const AppProvider = ({ children }) => {
         return i;
       }));
     },
-    [useRemoteDb, votes, issues, addNotification, calculatePriorityScore, getPriorityLabel]
+    [useRemoteDb, votes, issues, addNotification, calculatePriorityScore, getPriorityLabel, user, userStats, t]
   );
 
   const addIssue = useCallback(
@@ -477,19 +512,19 @@ export const AppProvider = ({ children }) => {
         try {
           const { authorId: _a, ...payload } = enrichedIssue;
           const created = await apiJson('/api/issues', { method: 'POST', body: { ...payload, priority_score: priorityScore, priority_label: priorityLabel, prediction, escalation } });
-          setIssues((prev) => [{ ...created, upvotes: created.upvotes ?? 0, downvotes: created.downvotes ?? 0 }, ...prev]);
+          setIssues((prev) => deduplicateIssues([{ ...created, upvotes: created.upvotes ?? 0, downvotes: created.downvotes ?? 0 }, ...prev]));
           return created;
         } catch (e) { console.error('addIssue', e); }
         return;
       }
       const newIssue = { ...enrichedIssue, id: Date.now(), upvotes: 0, downvotes: 0, progress: 'Reported', priorityScore, priorityLabel, prediction, escalation, createdAt: new Date().toISOString() };
-      setIssues((prev) => [newIssue, ...prev]);
-      if (issue.lat && issue.lng) addNotification(`New Issue Reported Nearby: ${issue.title}`, 'nearby');
-      if (escalation) addNotification(`Urgent: ${escalation.message}`, 'warning');
-      else if (prediction) addNotification(`AI Insight: ${prediction.message}`, 'info');
+      setIssues((prev) => deduplicateIssues([newIssue, ...prev]));
+      if (issue.lat && issue.lng) addNotification(`${t('New Issue Reported Nearby')}: ${issue.title}`, 'nearby');
+      if (escalation) addNotification(`${t('Urgent')}: ${t(escalation.message)}`, 'warning');
+      else if (prediction) addNotification(`${t('AI Insight')}: ${t(prediction.message)}`, 'info');
       return newIssue;
     },
-    [useRemoteDb, issues, addNotification, voteIssue]
+    [useRemoteDb, issues, addNotification, voteIssue, t, user?.id]
   );
 
   const addComment = useCallback(
@@ -521,7 +556,7 @@ export const AppProvider = ({ children }) => {
             const list = prev.map((i) => (String(i.id) === String(issueId) ? { ...i, ...updated } : i));
             const issue = list.find((l) => String(l.id) === String(issueId));
             const assignee = authorityName || authorityId;
-            if (issue) addNotification(`Your report [${issue.title}] has been assigned to ${assignee}`, 'info');
+            if (issue) addNotification(`${t('Your report')} [${issue.title}] ${t('has been assigned to')} ${assignee}`, 'info');
             return list;
           });
           return updated;
@@ -532,14 +567,14 @@ export const AppProvider = ({ children }) => {
       }
       setIssues(prev => prev.map(i => {
         if (i.id === issueId) {
-          addNotification(`Your report [${i.title}] has been assigned to ${authorityId}`, 'info');
+          addNotification(`${t('Your report')} [${i.title}] ${t('has been assigned to')} ${authorityId}`, 'info');
           addAuditLog(i.id, 'Manual Assignment', 'Admin', i.progress, 'In Progress');
           return { ...i, assignedTo: authorityId, progress: 'In Progress', deadline };
         }
         return i;
       }));
     },
-    [useRemoteDb, addNotification]
+    [useRemoteDb, addNotification, t]
   );
 
   const resolveIssue = useCallback(
@@ -553,7 +588,7 @@ export const AppProvider = ({ children }) => {
           setIssues((prev) => {
             const list = prev.map((i) => (String(i.id) === String(issueId) ? { ...i, ...updated } : i));
             const issue = list.find((l) => String(l.id) === String(issueId));
-            if (issue) addNotification(`GREAT NEWS! Your report [${issue.title}] is marked as Fixed. Please verify.`, 'success');
+            if (issue) addNotification(`${t('GREAT NEWS! Your report')} [${issue.title}] ${t('is marked as Fixed. Please verify.')}`, 'success');
             return list;
           });
           return updated;
@@ -561,7 +596,7 @@ export const AppProvider = ({ children }) => {
       }
       setIssues(prev => prev.map(i => {
         if (i.id === issueId) {
-          addNotification(`GREAT NEWS! Your report [${i.title}] is marked as Fixed. Please verify.`, 'success');
+          addNotification(`${t('GREAT NEWS! Your report')} [${i.title}] ${t('is marked as Fixed. Please verify.')}`, 'success');
           addAuditLog(i.id, 'Issue Resolved', i.assignedTo || 'Authority', i.progress, 'Resolved');
           return {
             ...i,
@@ -575,50 +610,230 @@ export const AppProvider = ({ children }) => {
         return i;
       }));
     },
-    [useRemoteDb, addNotification]
+    [useRemoteDb, addNotification, t]
   );
 
   const verifyIssue = useCallback(
     async (issueId, status, comment) => {
-      const targetIssue = issues.find((i) => i.id === issueId);
+      const targetIssue = issues.find((i) => String(i.id) === String(issueId));
       const previousStatus = targetIssue?.verificationStatus;
       const shouldSettle = ['Verified', 'Rejected'].includes(status) && previousStatus !== status;
 
       if (useRemoteDb) {
         try {
           const res = await apiJson(`/api/issues/${issueId}/verify`, { method: 'POST', body: { status, comment } });
-          setIssues((prev) => prev.map((i) => (i.id === issueId ? { ...i, verificationStatus: status, pointsOutcomeApplied: shouldSettle ? status : i.pointsOutcomeApplied } : i)));
+          setIssues((prev) => prev.map((i) => {
+            if (String(i.id) !== String(issueId)) return i;
+            const merged = { ...i, ...(res?.issue || {}), verificationStatus: status, pointsOutcomeApplied: shouldSettle ? status : i.pointsOutcomeApplied };
+            return merged;
+          }));
           if (shouldSettle && targetIssue) settleIssueOutcomePoints(targetIssue, status);
-          addNotification(`Verification recorded for Issue #${issueId}`, 'success');
+          addNotification(status === 'Rejected' ? t('Rework request sent to admin') : t('Verification recorded'), status === 'Rejected' ? 'warning' : 'success');
           return res;
         } catch (e) { console.error(e); }
       }
       setIssues(prev => prev.map(i => {
-        if (i.id === issueId) {
+        if (String(i.id) === String(issueId)) {
           if (status === 'Rejected') {
-            addNotification(`Escalation Alert: Issue [${i.title}] fix rejected by user. Re-assigning...`, 'warning');
+            addNotification(`${t('Escalation Alert')}: ${t('Issue')} [${i.title}] ${t('fix rejected by user. Re-assigning...')}`, 'warning');
             addAuditLog(i.id, 'Resolution Rejected', user?.id || 'User', 'Resolved', 'In Progress');
             const newScore = Math.min((i.priorityScore || 50) + 25, 100);
-            return { ...i, verificationStatus: 'Rejected', progress: 'In Progress', priorityScore: newScore, priorityLabel: getPriorityLabel(newScore), pointsOutcomeApplied: shouldSettle ? 'Rejected' : i.pointsOutcomeApplied };
+            return {
+              ...i,
+              verificationStatus: 'Rejected',
+              verificationComment: comment,
+              verificationBy: user?.id,
+              rejectedAt: new Date().toISOString(),
+              needsAdminReview: true,
+              progress: 'In Progress',
+              priorityScore: newScore,
+              priorityLabel: getPriorityLabel(newScore),
+              pointsOutcomeApplied: shouldSettle ? 'Rejected' : i.pointsOutcomeApplied,
+            };
           }
           if (status === 'Verified') {
              addAuditLog(i.id, 'User Verified Fix', user?.id || 'User', 'Resolved', 'Closed (Verified)');
           }
-          return { ...i, verificationStatus: status, pointsOutcomeApplied: shouldSettle ? status : i.pointsOutcomeApplied };
+          return {
+            ...i,
+            verificationStatus: status,
+            verificationComment: comment,
+            verificationBy: user?.id,
+            verifiedAt: status === 'Verified' ? new Date().toISOString() : i.verifiedAt,
+            needsAdminReview: status === 'Rejected' ? true : false,
+            pointsOutcomeApplied: shouldSettle ? status : i.pointsOutcomeApplied,
+          };
         }
         return i;
       }));
 
       if (shouldSettle && targetIssue) settleIssueOutcomePoints(targetIssue, status);
     },
-    [useRemoteDb, addNotification, user?.id, issues, settleIssueOutcomePoints]
+    [useRemoteDb, addNotification, user?.id, issues, settleIssueOutcomePoints, t]
+  );
+
+  const adminReviewIssue = useCallback(
+    async (issueId, note = '', action = 'review') => {
+      const targetIssue = issues.find((i) => String(i.id) === String(issueId));
+      const shouldSettleVerified = action === 'mark_completed' && targetIssue?.verificationStatus !== 'Verified';
+
+      if (useRemoteDb) {
+        try {
+          const updated = await apiJson(`/api/issues/${issueId}/admin-review`, {
+            method: 'PATCH',
+            body: { note, action },
+          });
+          setIssues((prev) => prev.map((i) => (String(i.id) === String(issueId) ? { ...i, ...updated } : i)));
+          if (shouldSettleVerified && targetIssue) {
+            settleIssueOutcomePoints(targetIssue, 'Verified');
+          }
+          return updated;
+        } catch (e) {
+          console.error(e);
+          throw e;
+        }
+      }
+
+      setIssues((prev) => prev.map((i) => {
+        if (String(i.id) !== String(issueId)) return i;
+        const base = {
+          ...i,
+          needsAdminReview: false,
+          adminReviewNote: note,
+          adminReviewedAt: new Date().toISOString(),
+          adminReviewedBy: user?.id,
+        };
+
+        if (action === 'mark_completed') {
+          return {
+            ...base,
+            progress: 'Resolved',
+            verificationStatus: 'Verified',
+            resolutionStatus: 'admin_override',
+            verifiedAt: new Date().toISOString(),
+            rejectedAt: undefined,
+          };
+        }
+
+        return base;
+      }));
+
+      if (shouldSettleVerified && targetIssue) {
+        settleIssueOutcomePoints(targetIssue, 'Verified');
+      }
+    },
+    [useRemoteDb, user?.id, issues, settleIssueOutcomePoints]
+  );
+
+  const fileAppeal = useCallback(
+    async (issueId, message) => {
+      if (useRemoteDb) {
+        try {
+          const updated = await apiJson(`/api/issues/${issueId}/appeal`, {
+            method: 'POST',
+            body: { message },
+          });
+          setIssues((prev) => prev.map((i) => (String(i.id) === String(issueId) ? { ...i, ...updated.issue } : i)));
+          return updated;
+        } catch (e) {
+          console.error(e);
+          throw e;
+        }
+      }
+
+      setIssues((prev) => prev.map((i) => {
+        if (String(i.id) !== String(issueId)) return i;
+        const maxAppeal = i.appeals && i.appeals.length > 0 
+          ? Math.max(...i.appeals.map(a => a.id || 0))
+          : 0;
+        return {
+          ...i,
+          appeals: [
+            ...(i.appeals || []),
+            {
+              id: maxAppeal + 1,
+              userId: user?.id,
+              userName: user?.name,
+              message,
+              timestamp: new Date().toISOString(),
+              status: 'pending',
+              adminAction: 'none',
+              adminNote: '',
+            },
+          ],
+        };
+      }));
+    },
+    [useRemoteDb, user?.id, user?.name]
+  );
+
+  const handleAppealAction = useCallback(
+    async (issueId, appealId, action, note, authorityId) => {
+      if (useRemoteDb) {
+        try {
+          const updated = await apiJson(`/api/issues/${issueId}/appeal/${appealId}/action`, {
+            method: 'PUT',
+            body: { action, note, authorityId },
+          });
+          setIssues((prev) => prev.map((i) => (String(i.id) === String(issueId) ? { ...i, ...updated.issue } : i)));
+          return updated;
+        } catch (e) {
+          console.error(e);
+          throw e;
+        }
+      }
+
+      setIssues((prev) => prev.map((i) => {
+        if (String(i.id) !== String(issueId)) return i;
+        const updatedAppeals = (i.appeals || []).map((a) => {
+          if (a.id === appealId) {
+            return {
+              ...a,
+              status: 'reviewed',
+              adminAction: action,
+              adminNote: note,
+              adminReviewedAt: new Date().toISOString(),
+              adminReviewedBy: user?.id,
+            };
+          }
+          return a;
+        });
+
+        let updated = {
+          ...i,
+          appeals: updatedAppeals,
+        };
+
+        if (action === 'reassigned') {
+          updated = {
+            ...updated,
+            progress: 'In Progress',
+            resolutionStatus: 'reopened',
+            assignedTo: authorityId,
+            assignmentNote: `Admin reopened: ${note || 'Resolution was inadequate'}`,
+            completionImg: '',
+            completionDescription: '',
+            completedAt: undefined,
+            verificationStatus: 'Pending',
+          };
+        } else if (action === 'admin_override') {
+          updated = {
+            ...updated,
+            resolutionStatus: 'admin_override',
+          };
+        }
+
+        return updated;
+      }));
+    },
+    [useRemoteDb, user?.id]
   );
 
   return (
     <AppContext.Provider
       value={{
         issues, addIssue, voteIssue, votes, notifications, markNotificationRead, markAllRead, clearNotification, addNotification, comments, addComment, userStats, useRemoteDb,
-        assignIssue, resolveIssue, verifyIssue, isWithinRadius,
+        assignIssue, resolveIssue, verifyIssue, adminReviewIssue, fileAppeal, handleAppealAction, isWithinRadius,
       }}
     >
       {children}
@@ -627,4 +842,3 @@ export const AppProvider = ({ children }) => {
 };
 
 export const useApp = () => useContext(AppContext);
-

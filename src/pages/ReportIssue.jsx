@@ -207,7 +207,7 @@ const ReportIssue = () => {
                   >
                     <div className="text-center px-2">
                       <ImageIcon className="h-8 w-8 text-primary mx-auto mb-2" />
-                      <p className="font-bold text-xs uppercase tracking-widest">{t('Upload Proof')}</p>
+                      <p className="font-bold text-xs uppercase tracking-widest">{t('UPLOAD PROOF')}</p>
                       {uploadedImageName ? (
                         <p className="text-[11px] mt-2 font-semibold text-foreground break-all">{uploadedImageName}</p>
                       ) : (
@@ -222,7 +222,7 @@ const ReportIssue = () => {
                   <div className="rounded-xl border border-border/60 bg-background/70 p-3.5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">{t('Issue Title')}</Label>
+                        <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">{t('ISSUE TITLE')}</Label>
                         <SmartInput
                           required
                           value={formData.title}
@@ -233,7 +233,7 @@ const ReportIssue = () => {
                       </div>
 
                       <div className="space-y-1.5">
-                        <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">{t('Category')}</Label>
+                        <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">{t('CATEGORY')}</Label>
                         <select
                           className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
                           value={formData.category}
@@ -251,7 +251,7 @@ const ReportIssue = () => {
 
                   <div className="rounded-xl border border-border/60 bg-background/70 p-3.5 space-y-3">
                     <div className="space-y-1.5">
-                      <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">{t('Description')}</Label>
+                      <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">{t('DESCRIPTION')}</Label>
                       <SmartTextarea
                         required
                         className="min-h-[105px]"
@@ -263,7 +263,7 @@ const ReportIssue = () => {
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">{t('Address')}</Label>
+                      <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">{t('ADDRESS')}</Label>
                       <div className="relative">
                         <Input
                           required
